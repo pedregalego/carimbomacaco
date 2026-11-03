@@ -1,575 +1,249 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Carimbo do Macaco - AR Scanner</title>
-    <style>
-        /* Reset e variáveis baseadas no SEMAS Scanner */
-        :root {
-            --bg-primary: rgba(10, 10, 15, 0.85);
-            --bg-secondary: rgba(26, 26, 46, 0.9);
-            --accent-green: #00ff41;
-            --accent-cyan: #00ffff;
-            --accent-amber: #ffb000;
-            --accent-red: #cc0000;
-            --text-primary: #e0e0e0;
-            --text-mono: 'Courier New', Courier, monospace;
-            --border-color: #333333;
-            --glow-green: 0 0 10px rgba(0, 255, 65, 0.5);
-            --glow-red: 0 0 15px rgba(204, 0, 0, 0.8);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Carimbo do Macaco – Escavação ao vivo</title>
+<style>
+  :root { --red:#cc0000; --red-hi:#ff3333; --ink:rgba(0,0,0,.86); --face:#ffd000; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; overflow:hidden; background:#000; color:#fff;
+    font-family:'Courier New',Courier,monospace; -webkit-tap-highlight-color:transparent; }
+  #camera,#overlay { position:absolute; inset:0; width:100%; height:100%; }
+  #camera { object-fit:cover; z-index:1; }
+  #overlay { z-index:5; }
+  #reticle { position:absolute; top:50%; left:50%; width:50px; height:50px; z-index:6; pointer-events:none;
+    border:2px dashed rgba(255,0,0,.6); border-radius:50%; transform:translate(-50%,-50%); animation:pulse 2s infinite; }
+  @keyframes pulse { 50% { transform:translate(-50%,-50%) scale(1.15); border-color:#f33; } }
+  @media (prefers-reduced-motion:reduce) { #reticle { animation:none; } }
 
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-            background-color: #000;
-            font-family: var(--text-mono);
-            color: var(--text-primary);
-            touch-action: none; /* Impede scroll no mobile */
-        }
+  #status { position:absolute; top:calc(env(safe-area-inset-top,0px) + 12px); left:0; right:0; z-index:10;
+    text-align:center; font-size:13px; text-shadow:1px 1px 3px #000; pointer-events:none; }
 
-        /* Câmera ao fundo */
-        #camera {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            z-index: 1;
-            transform: scaleX(-1); /* Efeito espelho para parecer VR */
-            display: none; /* Mostrado via JS */
-        }
+  #botoes { position:absolute; right:10px; z-index:12; top:50%; transform:translateY(-50%);
+    display:flex; flex-direction:column; gap:12px; }
+  .btn { width:64px; height:64px; border-radius:10px; border:2px solid #fff; background:var(--red); color:#fff;
+    font:bold 11px 'Courier New',monospace; box-shadow:0 0 15px rgba(255,0,0,.7); cursor:pointer; padding:4px; }
+  .btn:active { transform:scale(.92); background:var(--red-hi); }
+  .btn.off { background:#333; box-shadow:none; }
+  .btn:focus-visible { outline:3px solid var(--face); }
 
-        /* HUD Principal */
-        #hud {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        /* Header estilo SEMAS */
-        .top-bar {
-            background: var(--bg-primary);
-            border-bottom: 1px solid var(--accent-green);
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: var(--glow-green);
-            pointer-events: auto;
-        }
-
-        .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: var(--accent-green);
-            font-weight: bold;
-            letter-spacing: 2px;
-            text-shadow: var(--glow-green);
-        }
-
-        .status-indicators {
-            display: flex;
-            gap: 15px;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--accent-green);
-            margin-right: 5px;
-            animation: pulse 1.5s infinite;
-        }
-
-        /* Área central para os nós flutuantes */
-        #ar-viewport {
-            flex-grow: 1;
-            position: relative;
-            pointer-events: none;
-        }
-
-        /* Retículo central */
-        #reticle {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 40px;
-            height: 40px;
-            border: 1px dashed var(--accent-cyan);
-            border-radius: 50%;
-            opacity: 0.5;
-            pointer-events: none;
-            animation: spin 10s linear infinite;
-        }
-
-        /* Nós de Escavação (Dados) */
-        .node {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            background-color: var(--accent-red);
-            border: 2px solid var(--text-primary);
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            pointer-events: auto;
-            box-shadow: var(--glow-red);
-            transition: all 0.3s ease;
-            animation: float 3s ease-in-out infinite;
-        }
-
-        .node:hover, .node:active {
-            transform: scale(1.1) !important;
-            background-color: #ff3333;
-            box-shadow: 0 0 25px rgba(255, 0, 0, 1);
-        }
-
-        .node-label {
-            font-size: 10px;
-            margin-top: 2px;
-            color: var(--accent-amber);
-        }
-
-        /* Posições dos nós (simulando detecção no caderno) */
-        #node-1 { top: 30%; left: 25%; animation-delay: 0s; }
-        #node-2 { top: 65%; left: 65%; animation-delay: 0.5s; }
-        #node-3 { top: 45%; left: 80%; animation-delay: 1s; }
-
-        /* Painel de Detalhes (O "Scanner" aberto) */
-        #scanner-panel {
-            position: absolute;
-            top: 60px;
-            right: 10px;
-            bottom: 10px;
-            width: 350px;
-            background: var(--bg-primary);
-            border: 1px solid var(--accent-cyan);
-            box-shadow: var(--glow-cyan);
-            border-radius: 8px;
-            display: none; /* Escondido por padrão */
-            flex-direction: column;
-            pointer-events: auto;
-            backdrop-filter: blur(10px);
-            z-index: 20;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .panel-header {
-            background: var(--bg-secondary);
-            padding: 10px;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .panel-title {
-            color: var(--accent-cyan);
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        .close-btn {
-            background: transparent;
-            border: 1px solid var(--text-secondary);
-            color: var(--text-secondary);
-            border-radius: 4px;
-            cursor: pointer;
-            padding: 2px 8px;
-        }
-
-        .close-btn:hover {
-            color: #ff4444;
-            border-color: #ff4444;
-        }
-
-        /* Abas do Painel */
-        .tabs {
-            display: flex;
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border-color);
-            overflow-x: auto;
-        }
-
-        .tab {
-            padding: 8px 12px;
-            font-size: 11px;
-            color: var(--text-secondary);
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            white-space: nowrap;
-        }
-
-        .tab.active {
-            color: var(--accent-green);
-            border-bottom-color: var(--accent-green);
-            background: rgba(0, 255, 65, 0.05);
-        }
-
-        /* Conteúdo das Abas */
-        .panel-content {
-            padding: 15px;
-            overflow-y: auto;
-            font-size: 12px;
-            line-height: 1.4;
-            flex-grow: 1;
-        }
-
-        .tab-content {
-            display: none;
-            animation: fadeIn 0.3s;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Estilos internos do painel (tags, grids) */
-        .data-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .data-box {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            padding: 8px;
-            border-radius: 4px;
-            border-left: 2px solid var(--accent-amber);
-        }
-
-        .data-label {
-            color: var(--text-secondary);
-            font-size: 10px;
-            margin-bottom: 4px;
-        }
-
-        .data-value {
-            color: var(--accent-green);
-            font-weight: bold;
-        }
-
-        .sema-tag {
-            display: inline-block;
-            background: rgba(0, 255, 255, 0.1);
-            color: var(--accent-cyan);
-            border: 1px solid var(--accent-cyan);
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 10px;
-            margin: 2px;
-        }
-
-        .sema-tag.warning {
-            background: rgba(255, 176, 0, 0.1);
-            color: var(--accent-amber);
-            border-color: var(--accent-amber);
-        }
-
-        /* Animações */
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        @keyframes spin {
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(50px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        /* Instrução inicial */
-        #instruction {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            background: var(--bg-primary);
-            padding: 20px;
-            border: 1px solid var(--accent-green);
-            border-radius: 8px;
-            box-shadow: var(--glow-green);
-            z-index: 100;
-            pointer-events: auto;
-            cursor: pointer;
-        }
-    </style>
+  #legenda { position:absolute; left:10px; right:10px; z-index:12; bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+    background:var(--ink); border:1px solid var(--red); border-radius:8px; padding:14px 16px; max-height:42vh; overflow-y:auto;
+    box-shadow:0 0 20px rgba(0,0,0,.9); font-size:15px; line-height:1.5; display:none; }
+  #legenda h2 { margin:0 0 6px; font-size:16px; color:var(--red-hi); }
+  #legenda .tag { color:#aaa; font-size:12px; }
+  #legenda .ocr { white-space:pre-wrap; margin:8px 0 0; color:#fff; border-left:3px solid var(--face); padding-left:10px; }
+  #fechar { position:absolute; top:4px; right:10px; color:#f55; font-weight:bold; font-size:22px; cursor:pointer; }
+</style>
 </head>
 <body>
+<video id="camera" autoplay playsinline muted></video>
+<canvas id="overlay"></canvas>
+<div id="reticle"></div>
+<div id="status">Iniciando câmera…</div>
 
-    <!-- Câmera -->
-    <video id="camera" autoplay playsinline muted></video>
+<div id="botoes">
+  <button class="btn" id="btnTexto" aria-label="Ler texto">LER<br>TEXTO</button>
+  <button class="btn" id="btnRosto" aria-label="Alternar rostos">ROSTOS<br>ON</button>
+  <button class="btn" id="btnCam" aria-label="Trocar câmera">VIRAR<br>CÂMERA</button>
+</div>
 
-    <!-- HUD Principal -->
-    <div id="hud">
-        <!-- Top Bar -->
-        <div class="top-bar">
-            <div class="logo-area">
-                <span>▶</span> CARIMBO DO MACACO [AR]
-            </div>
-            <div class="status-indicators">
-                <span><span class="status-dot"></span>CAPTURA</span>
-                <span><span class="status-dot" style="background: var(--accent-amber);"></span>ENJOO</span>
-                <span><span class="status-dot" style="background: #ff4444;"></span>CRISTAL</span>
-            </div>
-        </div>
+<div id="legenda" role="status" aria-live="polite">
+  <span id="fechar" aria-label="Fechar">×</span>
+  <div id="legConteudo"></div>
+</div>
 
-        <!-- Viewport AR -->
-        <div id="ar-viewport">
-            <div id="reticle"></div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+/* ---------- Dicionário: nomes em português + escavações ---------- */
+const PT = {person:'pessoa',bicycle:'bicicleta',car:'carro',motorcycle:'moto',bus:'ônibus',bottle:'garrafa',cup:'copo',
+  fork:'garfo',knife:'faca',spoon:'colher',bowl:'tigela',chair:'cadeira',couch:'sofá','potted plant':'planta',bed:'cama',
+  'dining table':'mesa',tv:'televisão',laptop:'notebook',mouse:'mouse',remote:'controle remoto',keyboard:'teclado',
+  'cell phone':'celular',book:'livro',clock:'relógio',scissors:'tesoura',vase:'vaso',cat:'gato',dog:'cachorro',
+  backpack:'mochila',umbrella:'guarda-chuva',banana:'banana',apple:'maçã',orange:'laranja',refrigerator:'geladeira',
+  'wine glass':'taça',handbag:'bolsa',bird:'pássaro',sink:'pia',oven:'forno','teddy bear':'urso de pelúcia'};
 
-            <!-- Nós de Interação -->
-            <div class="node" id="node-1" onclick="openScanner('node-1')">
-                1
-                <div class="node-label">ETIMOLOGIA</div>
-            </div>
-            
-            <div class="node" id="node-2" onclick="openScanner('node-2')">
-                2
-                <div class="node-label">TECNO F.</div>
-            </div>
-            
-            <div class="node" id="node-3" onclick="openScanner('node-3')">
-                3
-                <div class="node-label">REVERSO</div>
-            </div>
-        </div>
-    </div>
+const ETIM = {
+  cadeira:'Do latim <em>cathedra</em>, do grego <em>kathédra</em> (“assento”: <em>kata</em> + <em>hédra</em>). Mesma raiz de “cátedra” e “catedral”: sentar é um ato de poder.',
+  pessoa:'Do latim <em>persona</em>, a máscara usada no teatro. Ser pessoa é carregar um papel diante dos outros.',
+  garrafa:'Provavelmente do árabe <em>gharrāfa</em> (“jarro”), que chegou ao português pela Península Ibérica.',
+  copo:'Do latim <em>cuppa</em> (“taça, cuba”).',
+  livro:'Do latim <em>liber</em>: a casca interna das árvores, onde antigamente se escrevia.',
+  mesa:'Do latim <em>mensa</em>.',
+  celular:'Do latim <em>cellula</em> (“pequena cela”). O nome vem das células de cobertura da rede de antenas.',
+  relógio:'Do latim <em>horologium</em>, do grego <em>hōrológion</em>: “o que diz as horas”.',
+  tesoura:'Do latim <em>tonsoria</em> (“a que tosquia”).',
+  garfo:'Do latim <em>furca</em> (“forcado”).',
+  colher:'Do latim <em>cochleare</em>, de <em>cochlea</em> (“caracol”): a concha virou ferramenta.',
+  sofá:'Do árabe <em>ṣuffa</em> (“banco, almofada”), via línguas europeias.',
+  cama:'Do latim tardio <em>cama</em> (“leito baixo”).',
+  televisão:'Híbrido: grego <em>têle</em> (“longe”) + latim <em>visio</em> (“visão”).',
+  notebook:'O inglês <em>notebook</em> é “caderno”. A raiz de computador, latim <em>computare</em>, é “calcular”: <em>com</em> + <em>putare</em> (“podar, pensar”).',
+  carro:'Do latim <em>carrus</em>, palavra de origem céltica (gaulesa).',
+  bicicleta:'Do francês <em>bicyclette</em>: <em>bi-</em> (“dois”) + grego <em>kýklos</em> (“roda, círculo”).',
+  gato:'Do latim tardio <em>cattus</em>.',
+  cachorro:'Origem discutida; uma hipótese liga a <em>catulus</em> (“filhote”) em latim.',
+  planta:'Do latim <em>planta</em>: “broto” e também “sola do pé”.',
+  mochila:'Provavelmente do basco <em>motxil</em>.',
+  maçã:'Do latim <em>(mala) matiana</em>, uma variedade de maçã.',
+  banana:'De línguas da África Ocidental, levada ao português por navegadores.',
+  laranja:'Do árabe <em>nāranj</em>, que vem do persa <em>nārang</em> e, antes, do sânscrito.',
+  ônibus:'Do latim <em>omnibus</em> (“para todos”).',
+  vaso:'Do latim <em>vas</em> (“recipiente”).',
+  geladeira:'De “gelo”, do latim <em>gelu</em>.',
+  mouse:'Do inglês <em>mouse</em> (“camundongo”), pelo fio que lembrava um rabo.',
+  tigela:'Origem incerta; palavra de uso antigo no português.'
+};
+const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const ETIM_N = {}; Object.keys(ETIM).forEach(k => ETIM_N[norm(k)] = k);
 
-    <!-- Painel do Scanner -->
-    <div id="scanner-panel">
-        <div class="panel-header">
-            <div class="panel-title" id="panel-title">ANÁLISE DE NÓ</div>
-            <button class="close-btn" onclick="closeScanner()">✕</button>
-        </div>
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('tab-semantica')">SEMÂNTICA</div>
-            <div class="tab" onclick="switchTab('tab-filologia')">FILOLOGIA</div>
-            <div class="tab" onclick="switchTab('tab-interacao')">INTERAÇÃO</div>
-        </div>
-        <div class="panel-content">
-            <!-- Conteúdo Dinâmico -->
-            <div id="tab-semantica" class="tab-content active"></div>
-            <div id="tab-filologia" class="tab-content"></div>
-            <div id="tab-interacao" class="tab-content"></div>
-        </div>
-    </div>
+/* ---------- Elementos ---------- */
+const video = document.getElementById('camera');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const legenda = document.getElementById('legenda');
+const legConteudo = document.getElementById('legConteudo');
+let facing = 'environment', stream = null, model = null, faceDet = null;
+let rostosOn = true, boxes = [], faces = [], busy = false, ocrBusy = false;
+let alvoAtual = null, alvoFixoAte = 0, ocrAte = 0;
 
-    <!-- Instrução Inicial -->
-    <div id="instruction" onclick="startAR()">
-        <h2>INICIAR CAPACETE VR</h2>
-        <p>Toque para permitir o acesso à câmera.<br>Gire o celular para a horizontal.</p>
-    </div>
+function setStatus(t){ statusEl.textContent = t; }
+function mostrar(html){ legConteudo.innerHTML = html; legenda.style.display = 'block'; }
+function esconder(){ legenda.style.display = 'none'; alvoAtual = null; }
+document.getElementById('fechar').onclick = esconder;
 
-    <script>
-        // Variável para armazenar o vídeo
-        const video = document.getElementById('camera');
+/* ---------- Câmera ---------- */
+async function iniciarCamera(){
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (!navigator.mediaDevices?.getUserMedia){ setStatus('Navegador sem acesso à câmera (use HTTPS).'); return; }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:facing }, audio:false });
+    video.srcObject = stream;
+    await video.play();
+    setStatus(model ? 'Aponte e toque nos quadrados vermelhos.' : 'Carregando modelo de objetos…');
+  } catch(e){ setStatus('Permita o acesso à câmera para continuar.'); }
+}
+document.getElementById('btnCam').onclick = () => { facing = facing === 'environment' ? 'user' : 'environment'; iniciarCamera(); };
 
-        // 1. Inicialização da Câmera e AR
-        function startAR() {
-            const instruction = document.getElementById('instruction');
-            
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-                    .then(function (stream) {
-                        video.srcObject = stream;
-                        video.style.display = 'block';
-                        instruction.style.display = 'none'; // Esconde a instrução
-                        
-                        // Tenta travar a tela na horizontal
-                        if (screen.orientation && screen.orientation.lock) {
-                            screen.orientation.lock('landscape').catch(e => console.log("Orientação não suportada"));
-                        }
-                    })
-                    .catch(function (error) {
-                        alert("Erro ao acessar a câmera: " + error.message);
-                    });
-            } else {
-                alert("Seu navegador não suporta acesso à câmera.");
-            }
-        }
+/* ---------- Modelos ---------- */
+async function carregarModelos(){
+  try {
+    model = await cocoSsd.load({ base:'lite_mobilenet_v2' });
+    setStatus('Aponte e toque nos quadrados vermelhos.');
+  } catch(e){ setStatus('Falha ao carregar o modelo de objetos (precisa de internet).'); }
+  if ('FaceDetector' in window){
+    try { faceDet = new FaceDetector({ fastMode:true, maxDetectedFaces:5 }); } catch(e){}
+  }
+}
 
-        // 2. Dados Epistemológicos (Baseado no SEMAS Scanner e sua conversa)
-        const database = {
-            'node-1': {
-                title: "NÓ 1: ETIMOLOGIA CRUZADA",
-                semantica: `
-                    <div class="data-grid">
-                        <div class="data-box">
-                            <div class="data-label">PALAVRA 1</div>
-                            <div class="data-value">MACACO</div>
-                        </div>
-                        <div class="data-box">
-                            <div class="data-label">ORIGEM</div>
-                            <div class="data-value">Banto (makako)</div>
-                        </div>
-                    </div>
-                    <div class="data-grid">
-                        <div class="data-box">
-                            <div class="data-label">PALAVRA 2</div>
-                            <div class="data-value">CARIMBO</div>
-                        </div>
-                        <div class="data-box">
-                            <div class="data-label">ORIGEM</div>
-                            <div class="data-value">Quimbundo (ka'rima)</div>
-                        </div>
-                    </div>
-                    <p>Semas compartilhados:</p>
-                    <span class="sema-tag">[+África]</span>
-                    <span class="sema-tag">[+Colisão Cultural]</span>
-                    <span class="sema-tag">[+Criação Lúdica]</span>
-                `,
-                filologia: `
-                    <p><strong>Análise Morfológica:</strong></p>
-                    <p>O termo "Carimbo" evoluiu de <em>kirimbu</em> (marca a ferro) para o instrumento de borracha. "Macaco" designava "besta selvagem".</p>
-                    <p><strong>Confiança:</strong> 98%</p>
-                    <div style="height: 5px; background: #333; margin-top: 5px;">
-                        <div style="height: 100%; width: 98%; background: var(--accent-green);"></div>
-                    </div>
-                `,
-                interacao: `
-                    <p><strong>Estado do Nó:</strong> Classificado.</p>
-                    <p>Este nó ancora a base do seu jogo. A etimologia serve como o "chão" físico do caderno.</p>
-                `
-            },
-            'node-2': {
-                title: "NÓ 2: TECNO FEITIÇO",
-                semantica: `
-                    <div class="data-grid">
-                        <div class="data-box">
-                            <div class="data-label">AGENTE 1</div>
-                            <div class="data-value">FERRO DE SOLDA</div>
-                        </div>
-                        <div class="data-box">
-                            <div class="data-label">AGENTE 2</div>
-                            <div class="data-value">BOLDO QUEIMADO</div>
-                        </div>
-                    </div>
-                    <p>Reação Sinérgica:</p>
-                    <span class="sema-tag warning">[+Fumaça Tóxica]</span>
-                    <span class="sema-tag warning">[+Modulação Corpórea]</span>
-                    <span class="sema-tag">[+Interação Enativa]</span>
-                `,
-                filologia: `
-                    <p><strong>Análise do Artefato:</strong></p>
-                    <p>O ferro de solda (tecnologia) agiu sobre a matéria orgânica (boldo). O resultado não foi uma solda, mas uma emissão química que alterou o observador (enjoo).</p>
-                    <p><strong>Falha Sistêmica:</strong> O feitiço afetou o feiticeiro.</p>
-                `,
-                interacao: `
-                    <p><strong>Estado do Nó:</strong> Instável / Tóxico.</p>
-                    <p>Este nó registra a intervenção do mundo real no seu corpo. A imagem do ferro desligado no chão é a prova física dessa interação.</p>
-                `
-            },
-            'node-3': {
-                title: "NÓ 3: PROMPT REVERSO",
-                semantica: `
-                    <div class="data-grid">
-                        <div class="data-box">
-                            <div class="data-label">CONCEITO 1</div>
-                            <div class="data-value">CRISTALIZAÇÃO</div>
-                        </div>
-                        <div class="data-box">
-                            <div class="data-label">CONCEITO 2</div>
-                            <div class="data-value">MODULAÇÃO</div>
-                        </div>
-                    </div>
-                    <p>Camadas Epistemológicas:</p>
-                    <span class="sema-tag">[+Observador em Outro Ângulo]</span>
-                    <span class="sema-tag">[+Ferramenta Curadora]</span>
-                `,
-                filologia: `
-                    <p><strong>Análise Filosófica:</strong></p>
-                    <p>Você identificou que as IAs são "cristalizadas" de forma errada por outros humanos. A sua correção vem através da narração e da observação de um ângulo que a ferramenta não vê.</p>
-                `,
-                interacao: `
-                    <p><strong>Estado do Nó:</strong> Em Narrativa.</p>
-                    <p>Este é o nó mais abstrato. Ele representa a sua própria voz guiando a interface. O código é apenas o meio; você é o narrador.</p>
-                `
-            }
-        };
+/* ---------- Mapeamento vídeo → tela (object-fit: cover) ---------- */
+function mapa(){
+  const vw = video.videoWidth, vh = video.videoHeight, cw = innerWidth, ch = innerHeight;
+  const s = Math.max(cw/vw, ch/vh);
+  return { s, ox:(cw - vw*s)/2, oy:(ch - vh*s)/2 };
+}
+function paraTela(b){ const m = mapa(); return { x:b[0]*m.s+m.ox, y:b[1]*m.s+m.oy, w:b[2]*m.s, h:b[3]*m.s }; }
 
-        // 3. Funções de Controle do Painel
-        function openScanner(nodeId) {
-            const panel = document.getElementById('scanner-panel');
-            const data = database[nodeId];
+/* ---------- Laço de detecção ---------- */
+async function detectar(){
+  if (!busy && model && video.readyState >= 2 && video.videoWidth){
+    busy = true;
+    try {
+      const preds = await model.detect(video, 8, 0.5);
+      boxes = preds.map(p => ({ ...paraTela(p.bbox), nome:PT[p.class] || p.class, score:p.score }));
+      if (rostosOn && faceDet){
+        const f = await faceDet.detect(video);
+        faces = f.map(r => { const b = r.boundingBox; return paraTela([b.x,b.y,b.width,b.height]); });
+      } else faces = [];
+      atualizarLegenda();
+    } catch(e){}
+    busy = false;
+  }
+  setTimeout(detectar, 120);
+}
 
-            // Atualiza o título
-            document.getElementById('panel-title').textContent = data.title;
+function desenhar(){
+  canvas.width = innerWidth; canvas.height = innerHeight;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.lineWidth = 3; ctx.font = 'bold 15px "Courier New",monospace';
+  boxes.forEach(b => {
+    const ativo = b === alvoAtual;
+    ctx.strokeStyle = ativo ? '#ff3333' : 'rgba(204,0,0,.85)';
+    ctx.lineWidth = ativo ? 4 : 2;
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+    const t = `${b.nome} ${Math.round(b.score*100)}%`, tw = ctx.measureText(t).width + 12;
+    ctx.fillStyle = '#cc0000'; ctx.fillRect(b.x, Math.max(0,b.y-24), tw, 24);
+    ctx.fillStyle = '#fff'; ctx.fillText(t, b.x+6, Math.max(17,b.y-7));
+  });
+  faces.forEach(f => {
+    ctx.strokeStyle = '#ffd000'; ctx.lineWidth = 3; ctx.strokeRect(f.x, f.y, f.w, f.h);
+    ctx.fillStyle = '#ffd000'; ctx.fillRect(f.x, f.y+f.h, 62, 22);
+    ctx.fillStyle = '#000'; ctx.fillText('rosto', f.x+6, f.y+f.h+16);
+  });
+  requestAnimationFrame(desenhar);
+}
 
-            // Preenche as abas
-            document.getElementById('tab-semantica').innerHTML = data.semantica;
-            document.getElementById('tab-filologia').innerHTML = data.filologia;
-            document.getElementById('tab-interacao').innerHTML = data.interacao;
+/* ---------- Legendas ---------- */
+function escavacao(nome){
+  const k = ETIM_N[norm(nome)];
+  return k ? ETIM[k] : 'Ainda sem escavação no dicionário local para esta palavra.';
+}
+function htmlObjeto(b){
+  return `<h2>[Escavação: ${b.nome}]</h2>${escavacao(b.nome)}<div class="tag">confiança ${Math.round(b.score*100)}%</div>`;
+}
+function maisPerto(){
+  const cx = innerWidth/2, cy = innerHeight/2; let melhor = null, d0 = 1e9;
+  boxes.forEach(b => { const d = Math.hypot(b.x+b.w/2-cx, b.y+b.h/2-cy); if (d < d0){ d0 = d; melhor = b; } });
+  return melhor;
+}
+function atualizarLegenda(){
+  const agora = Date.now();
+  if (agora < ocrAte || agora < alvoFixoAte) return;       // texto lido ou toque recente ficam na tela
+  const b = maisPerto();
+  if (!b){ if (alvoAtual) esconder(); return; }
+  if (!alvoAtual || alvoAtual.nome !== b.nome){ mostrar(htmlObjeto(b)); }
+  alvoAtual = b;
+}
+canvas.addEventListener('pointerdown', e => {
+  const hit = boxes.filter(b => e.clientX>=b.x && e.clientX<=b.x+b.w && e.clientY>=b.y && e.clientY<=b.y+b.h)
+                   .sort((a,c) => a.w*a.h - c.w*c.h)[0];
+  if (hit){ alvoAtual = hit; alvoFixoAte = Date.now() + 8000; ocrAte = 0; mostrar(htmlObjeto(hit)); }
+});
+document.getElementById('btnRosto').onclick = e => {
+  rostosOn = !rostosOn; e.currentTarget.classList.toggle('off', !rostosOn);
+  e.currentTarget.innerHTML = rostosOn ? 'ROSTOS<br>ON' : 'ROSTOS<br>OFF';
+  if (rostosOn && !faceDet) setStatus('Este navegador não detecta rostos; “pessoa” segue funcionando.');
+};
 
-            // Reseta as abas para a primeira
-            switchTab('tab-semantica');
+/* ---------- Leitura de texto (OCR) ---------- */
+document.getElementById('btnTexto').onclick = async () => {
+  if (ocrBusy || !video.videoWidth) return;
+  if (!window.Tesseract){ setStatus('Leitor de texto indisponível (precisa de internet).'); return; }
+  ocrBusy = true; setStatus('Lendo texto…');
+  mostrar('<h2>[Lendo…]</h2>Mantenha o texto parado e bem iluminado.');
+  try {
+    const c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight;
+    c.getContext('2d').drawImage(video, 0, 0);
+    const { data } = await Tesseract.recognize(c, 'por');
+    const texto = data.text.trim();
+    if (!texto){ mostrar('<h2>[Nenhum texto encontrado]</h2>Aproxime a câmera e tente de novo.'); }
+    else {
+      const achadas = [...new Set(texto.split(/[^\p{L}]+/u).map(norm).filter(w => ETIM_N[w]))];
+      const extra = achadas.map(w => `<p><strong>${ETIM_N[w]}</strong>: ${ETIM[ETIM_N[w]]}</p>`).join('');
+      const seguro = texto.replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+      mostrar(`<h2>[Texto no ambiente]</h2><div class="ocr">${seguro}</div>${extra}`);
+    }
+    ocrAte = Date.now() + 12000;
+  } catch(e){ mostrar('<h2>[Erro]</h2>Não foi possível ler o texto agora.'); }
+  ocrBusy = false; setStatus('Aponte e toque nos quadrados vermelhos.');
+};
 
-            // Mostra o painel
-            panel.style.display = 'flex';
-            
-            // Efeito de piscar o nó selecionado
-            const node = document.getElementById(nodeId);
-            node.style.background = 'var(--accent-cyan)';
-            setTimeout(() => node.style.background = 'var(--accent-red)', 300);
-        }
-
-        function closeScanner() {
-            document.getElementById('scanner-panel').style.display = 'none';
-        }
-
-        function switchTab(tabId) {
-            // Remove active de todas as abas e conteúdos
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-            // Adiciona active na aba clicada
-            // Encontra o botão da aba baseado no conteúdo
-            const content = document.getElementById(tabId);
-            const tabIndex = Array.from(content.parentNode.children).indexOf(content);
-            document.querySelectorAll('.tab')[tabIndex].classList.add('active');
-            
-            // Mostra o conteúdo
-            content.classList.add('active');
-        }
-    </script>
+/* ---------- Início ---------- */
+iniciarCamera(); carregarModelos(); detectar(); desenhar();
+</script>
 </body>
 </html>
