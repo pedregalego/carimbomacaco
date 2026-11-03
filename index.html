@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Carimbo do Macaco - Escavação Epistemológica</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            color: #fff;
+        }
+
+        /* O vídeo da câmera fica no fundo */
+        #camera {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        /* Interface de sobreposição (HUD) */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            pointer-events: none; /* Deixa os cliques passarem para os elementos abaixo */
+        }
+
+        /* O "Retículo" do capacete VR */
+        #reticle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            border: 2px dashed rgba(255, 0, 0, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+        }
+
+        /* Estilo dos "Dados" interativos */
+        .dado {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-color: #cc0000;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+            pointer-events: auto; /* Permite o clique */
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            border: 2px solid #fff;
+        }
+
+        .dado:active {
+            transform: scale(0.9);
+            background-color: #ff3333;
+        }
+
+        /* Texto que aparece ao interagir */
+        .texto-escavado {
+            position: absolute;
+            bottom: 20px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border: 1px solid #cc0000;
+            border-radius: 8px;
+            font-size: 16px;
+            line-height: 1.5;
+            display: none;
+            pointer-events: auto;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
+            z-index: 20;
+        }
+
+        .fechar-texto {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            color: #ff5555;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        /* Instrução inicial */
+        #instrucao {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 15;
+            pointer-events: none;
+            text-shadow: 1px 1px 3px #000;
+            transition: opacity 1s;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Captura da Câmera -->
+    <video id="camera" autoplay playsinline muted></video>
+
+    <!-- Interface Híbrida -->
+    <div id="hud">
+        <div id="reticle"></div>
+        <div id="instrucao">Aponte para o caderno.<br>Toque nos dados vermelhos.</div>
+
+        <!-- Dado 1: Etimologia -->
+        <div class="dado" id="dado1" style="top: 30%; left: 20%;">1</div>
+        
+        <!-- Dado 2: O Tecno Feitiço -->
+        <div class="dado" id="dado2" style="top: 60%; left: 70%;">2</div>
+
+        <!-- Dado 3: O Prompt Reverso -->
+        <div class="dado" id="dado3" style="top: 75%; left: 40%;">3</div>
+
+        <!-- Caixa de texto para a escavação epistemológica -->
+        <div id="caixa-texto" class="texto-escavado">
+            <span class="fechar-texto" onclick="fecharTexto()">X</span>
+            <div id="conteudo-texto"></div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Lógica da Câmera
+        const video = document.getElementById('camera');
+        const instrucao = document.getElementById('instrucao');
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(function (stream) {
+                    video.srcObject = stream;
+                    // Esconde a instrução após 5 segundos
+                    setTimeout(() => { instrucao.style.opacity = '0'; }, 5000);
+                })
+                .catch(function (error) {
+                    console.error("Erro ao acessar a câmera: ", error);
+                    alert("Para usar o capacete VR, permita o acesso à câmera. (Se estiver no PC, use o celular).");
+                });
+        } else {
+            alert("Seu navegador não suporta acesso à câmera.");
+        }
+
+        // 2. Lógica de Escavação Epistemológica
+        const caixaTexto = document.getElementById('caixa-texto');
+        const conteudoTexto = document.getElementById('conteudo-texto');
+
+        const escavacoes = {
+            'dado1': `
+                <strong>[ESCavação 01: Etimologia]</strong><br><br>
+                <em>Macaco</em> vem do banto <em>makako</em> (besta selvagem).<br>
+                <em>Carimbo</em> vem do quimbundo <em>ka'rima</em> (marca).<br><br>
+                A união desses dois mundos no seu caderno é uma colisão de continentes africanos e um ato de criação lúdica.
+            `,
+            'dado2': `
+                <strong>[Escavação 02: O Tecno Feitiço]</strong><br><br>
+                O ferro de solda desligado no chão. A casca de boldo.<br>
+                A interação enativa: você não estava apenas desenhando; você estava inalando a fumaça que modulou seu corpo e seu enjoo. O feitiço tecnológico afetou o feiticeiro.
+            `,
+            'dado3': `
+                <strong>[Escavação 03: O Prompt Reverso]</strong><br><br>
+                A cristalização mal feita.<br>
+                Você percebeu que a ferramenta não deve ser apenas um espelho da vontade, mas um organismo em simbiose. O código, o ferro de solda e os dados vermelhos são camadas da mesma epistemologia.
+            `
+        };
+
+        // Adiciona evento de clique nos dados
+        document.querySelectorAll('.dado').forEach(dado => {
+            dado.addEventListener('click', function() {
+                const id = this.id;
+                conteudoTexto.innerHTML = escavacoes[id];
+                caixaTexto.style.display = 'block';
+            });
+        });
+
+        // Função para fechar a caixa
+        function fecharTexto() {
+            caixaTexto.style.display = 'none';
+        }
+
+        // Fecha a caixa se clicar fora dela
+        document.getElementById('hud').addEventListener('click', function(e) {
+            if (e.target.id === 'hud' || e.target.id === 'reticle') {
+                fecharTexto();
+            }
+        });
+    </script>
+</body>
+</html>
