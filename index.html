@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Carimbo do Macaco – Escavação ao vivo</title>
+<title>Carimbo do Macaco – Escavação semiótica ao vivo</title>
 <style>
-  :root { --red:#cc0000; --red-hi:#ff3333; --ink:rgba(0,0,0,.86); --face:#ffd000; }
+  :root { --red:#cc0000; --red-hi:#ff3333; --ink:rgba(0,0,0,.9); --nuc:#3dff7a; --dif:#00cfff; --ctx:#ffb000; --face:#ffd000; }
   * { box-sizing:border-box; }
   html,body { margin:0; height:100%; overflow:hidden; background:#000; color:#fff;
     font-family:'Courier New',Courier,monospace; -webkit-tap-highlight-color:transparent; }
@@ -16,25 +16,34 @@
     border:2px dashed rgba(255,0,0,.6); border-radius:50%; transform:translate(-50%,-50%); animation:pulse 2s infinite; }
   @keyframes pulse { 50% { transform:translate(-50%,-50%) scale(1.15); border-color:#f33; } }
   @media (prefers-reduced-motion:reduce) { #reticle { animation:none; } }
+  #status { position:absolute; top:calc(env(safe-area-inset-top,0px) + 10px); left:0; right:0; z-index:10;
+    text-align:center; font-size:12px; text-shadow:1px 1px 3px #000; pointer-events:none; }
 
-  #status { position:absolute; top:calc(env(safe-area-inset-top,0px) + 12px); left:0; right:0; z-index:10;
-    text-align:center; font-size:13px; text-shadow:1px 1px 3px #000; pointer-events:none; }
-
-  #botoes { position:absolute; right:10px; z-index:12; top:50%; transform:translateY(-50%);
-    display:flex; flex-direction:column; gap:12px; }
-  .btn { width:64px; height:64px; border-radius:10px; border:2px solid #fff; background:var(--red); color:#fff;
-    font:bold 11px 'Courier New',monospace; box-shadow:0 0 15px rgba(255,0,0,.7); cursor:pointer; padding:4px; }
+  #botoes { position:absolute; right:8px; top:50%; transform:translateY(-50%); z-index:12; display:flex; flex-direction:column; gap:8px; }
+  .btn { width:54px; height:54px; border-radius:10px; border:2px solid #fff; background:var(--red); color:#fff;
+    font:bold 10px 'Courier New',monospace; box-shadow:0 0 12px rgba(255,0,0,.7); cursor:pointer; padding:2px; }
   .btn:active { transform:scale(.92); background:var(--red-hi); }
   .btn.off { background:#333; box-shadow:none; }
-  .btn:focus-visible { outline:3px solid var(--face); }
+  .btn:focus-visible,.chip:focus-visible { outline:3px solid var(--face); }
 
-  #legenda { position:absolute; left:10px; right:10px; z-index:12; bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
-    background:var(--ink); border:1px solid var(--red); border-radius:8px; padding:14px 16px; max-height:42vh; overflow-y:auto;
-    box-shadow:0 0 20px rgba(0,0,0,.9); font-size:15px; line-height:1.5; display:none; }
-  #legenda h2 { margin:0 0 6px; font-size:16px; color:var(--red-hi); }
-  #legenda .tag { color:#aaa; font-size:12px; }
-  #legenda .ocr { white-space:pre-wrap; margin:8px 0 0; color:#fff; border-left:3px solid var(--face); padding-left:10px; }
-  #fechar { position:absolute; top:4px; right:10px; color:#f55; font-weight:bold; font-size:22px; cursor:pointer; }
+  #strip { position:absolute; left:10px; right:72px; z-index:12; bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+    background:var(--ink); border:1px solid var(--red); border-radius:8px; padding:10px 12px; font-size:14px; line-height:1.5; display:none; }
+  #strip b { color:var(--red-hi); } #strip small { color:#aaa; display:block; }
+
+  #ficha { position:absolute; left:8px; right:8px; z-index:20; bottom:calc(env(safe-area-inset-bottom,0px) + 8px);
+    max-height:68vh; overflow-y:auto; background:var(--ink); border:1px solid var(--red); border-radius:10px;
+    padding:14px 16px 16px; font-size:14px; line-height:1.5; display:none; box-shadow:0 0 24px #000; }
+  #ficha h2 { margin:0; font-size:18px; color:var(--red-hi); }
+  #ficha h3 { margin:14px 0 4px; font-size:13px; color:#bbb; font-weight:normal; border-bottom:1px solid #333; }
+  #ficha .x { position:absolute; top:6px; right:12px; font-size:26px; color:#f55; cursor:pointer; }
+  #ficha .meta { color:#ddd; font-size:13px; }
+  .tag { display:inline-block; margin:2px 3px 2px 0; padding:2px 8px; border-radius:12px; font-size:12px; border:1px solid; }
+  .tag.n { color:var(--nuc); border-color:var(--nuc); } .tag.d { color:var(--dif); border-color:var(--dif); } .tag.c { color:var(--ctx); border-color:var(--ctx); }
+  .fonte { margin:6px 0; padding-left:8px; border-left:3px solid var(--red); font-size:13px; }
+  .fonte a { color:var(--dif); } .fonte ol { margin:4px 0; padding-left:20px; } .mudo { color:#888; }
+  .ocr { white-space:pre-wrap; border-left:3px solid var(--face); padding-left:10px; margin:6px 0; }
+  .chip { display:inline-block; margin:3px 4px 3px 0; padding:6px 10px; border:1px solid var(--face); color:var(--face); background:none;
+    border-radius:14px; font:13px 'Courier New',monospace; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -44,21 +53,22 @@
 <div id="status">Iniciando câmera…</div>
 
 <div id="botoes">
-  <button class="btn" id="btnTexto" aria-label="Ler texto">LER<br>TEXTO</button>
-  <button class="btn" id="btnRosto" aria-label="Alternar rostos">ROSTOS<br>ON</button>
-  <button class="btn" id="btnCam" aria-label="Trocar câmera">VIRAR<br>CÂMERA</button>
+  <button class="btn" id="btnTexto">LER<br>TEXTO</button>
+  <button class="btn" id="btnAgente">AGENTE<br>BUSCAR</button>
+  <button class="btn" id="btnCalib">CALI-<br>BRAR</button>
+  <button class="btn" id="btnRosto">ROSTOS<br>ON</button>
+  <button class="btn" id="btnCam">VIRAR<br>CÂMERA</button>
+  <button class="btn" id="btnExp">EXPOR-<br>TAR</button>
 </div>
 
-<div id="legenda" role="status" aria-live="polite">
-  <span id="fechar" aria-label="Fechar">×</span>
-  <div id="legConteudo"></div>
-</div>
+<div id="strip" role="status" aria-live="polite"></div>
+<div id="ficha"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 <script>
-/* ---------- Dicionário: nomes em português + escavações ---------- */
+/* ================= DADOS LOCAIS ================= */
 const PT = {person:'pessoa',bicycle:'bicicleta',car:'carro',motorcycle:'moto',bus:'ônibus',bottle:'garrafa',cup:'copo',
   fork:'garfo',knife:'faca',spoon:'colher',bowl:'tigela',chair:'cadeira',couch:'sofá','potted plant':'planta',bed:'cama',
   'dining table':'mesa',tv:'televisão',laptop:'notebook',mouse:'mouse',remote:'controle remoto',keyboard:'teclado',
@@ -66,183 +76,316 @@ const PT = {person:'pessoa',bicycle:'bicicleta',car:'carro',motorcycle:'moto',bu
   backpack:'mochila',umbrella:'guarda-chuva',banana:'banana',apple:'maçã',orange:'laranja',refrigerator:'geladeira',
   'wine glass':'taça',handbag:'bolsa',bird:'pássaro',sink:'pia',oven:'forno','teddy bear':'urso de pelúcia'};
 
+/* Tamanho real aproximado [dimensão, metros]: h=altura, w=largura, m=maior lado */
+const REAL = {pessoa:['h',1.7],cadeira:['h',.9],garrafa:['h',.26],copo:['h',.10],taça:['h',.2],celular:['m',.15],livro:['m',.23],
+  notebook:['w',.33],teclado:['w',.44],mouse:['m',.11],relógio:['m',.3],tesoura:['m',.18],garfo:['m',.19],colher:['m',.17],faca:['m',.22],
+  bicicleta:['m',1.7],mochila:['h',.45],'guarda-chuva':['m',.9],banana:['m',.19],maçã:['m',.08],laranja:['m',.08],vaso:['h',.25],
+  televisão:['w',.9],sofá:['w',1.9],mesa:['w',1.4],cama:['m',2],geladeira:['h',1.7],gato:['m',.45],cachorro:['m',.6],
+  'controle remoto':['m',.18],tigela:['w',.15],bolsa:['m',.3],'urso de pelúcia':['h',.3]};
+
+/* Semas: nucleares | diferenciais | cadeia taxonômica */
+const SEM = {
+ cadeira:'+artefato,+assento,+suporte corporal,+encosto|+individual,-coletivo,+móvel|objeto>artefato>mobiliário>assento',
+ sofá:'+artefato,+assento,+suporte corporal,+estofado|+coletivo,-portátil|objeto>artefato>mobiliário>assento',
+ mesa:'+artefato,+superfície plana,+suporte de objetos|+elevada,-assento|objeto>artefato>mobiliário',
+ cama:'+artefato,+superfície de repouso|+horizontal,+estofada|objeto>artefato>mobiliário',
+ garrafa:'+artefato,+recipiente,+líquido|+gargalo,+fechável,+portátil|objeto>artefato>recipiente',
+ copo:'+artefato,+recipiente,+líquido|+aberto,-gargalo,+individual|objeto>artefato>recipiente',
+ taça:'+artefato,+recipiente,+líquido|+aberta,+haste|objeto>artefato>recipiente',
+ celular:'+artefato,+eletrônico,+comunicação,+portátil|+tela sensível,+individual|objeto>artefato>dispositivo eletrônico',
+ notebook:'+artefato,+eletrônico,+computação,+portátil|+teclado,+dobrável|objeto>artefato>dispositivo eletrônico',
+ teclado:'+artefato,+eletrônico,+entrada de dados|+teclas,-tela|objeto>artefato>periférico',
+ mouse:'+artefato,+eletrônico,+entrada de dados|+apontador,-teclas|objeto>artefato>periférico',
+ televisão:'+artefato,+eletrônico,+imagem,+som|+tela,-portátil|objeto>artefato>dispositivo eletrônico',
+ livro:'+artefato,+escrita,+páginas|+encadernado,+portátil|objeto>artefato>suporte de informação',
+ relógio:'+artefato,+medida do tempo|+mostrador|objeto>artefato>instrumento',
+ tesoura:'+artefato,+ferramenta,+corte|+duas lâminas|objeto>artefato>ferramenta',
+ faca:'+artefato,+ferramenta,+corte|+lâmina única|objeto>artefato>talher',
+ garfo:'+artefato,+talher,+perfura|+dentes|objeto>artefato>talher',
+ colher:'+artefato,+talher,+concavidade|-corte,-dentes|objeto>artefato>talher',
+ carro:'+artefato,+veículo,+motor,+transporte|+quatro rodas|objeto>artefato>veículo',
+ bicicleta:'+artefato,+veículo,+transporte|+duas rodas,+tração humana|objeto>artefato>veículo',
+ pessoa:'+animado,+humano,+racional|+bípede,+falante,-artefato|ser vivo>animal>humano',
+ gato:'+animado,+animal,+mamífero|+felino,+doméstico|ser vivo>animal>mamífero',
+ cachorro:'+animado,+animal,+mamífero|+canino,+doméstico|ser vivo>animal>mamífero',
+ planta:'+vivo,+vegetal|-animado,+fotossíntese|ser vivo>vegetal',
+ banana:'+vivo (origem),+fruto,+alimento|+casca grossa,+curvo|ser vivo>vegetal>fruto',
+ maçã:'+vivo (origem),+fruto,+alimento|+arredondado,+casca fina|ser vivo>vegetal>fruto',
+ laranja:'+vivo (origem),+fruto,+alimento|+cítrico,+arredondado|ser vivo>vegetal>fruto',
+ mochila:'+artefato,+recipiente,+vestível|+alças,+dorsal|objeto>artefato>acessório',
+ bolsa:'+artefato,+recipiente,+vestível|+alça,-dorsal|objeto>artefato>acessório',
+ 'guarda-chuva':'+artefato,+proteção,+chuva|+dobrável,+haste|objeto>artefato>acessório',
+ vaso:'+artefato,+recipiente|+abertura larga,+decorativo|objeto>artefato>recipiente'};
+function semasDe(nome){ const r = SEM[nome]; if (!r) return {n:[],d:[],t:''};
+  const [n,d,t] = r.split('|'); return {n:n.split(','), d:d.split(','), t:t.split('>')}; }
+
 const ETIM = {
-  cadeira:'Do latim <em>cathedra</em>, do grego <em>kathédra</em> (“assento”: <em>kata</em> + <em>hédra</em>). Mesma raiz de “cátedra” e “catedral”: sentar é um ato de poder.',
-  pessoa:'Do latim <em>persona</em>, a máscara usada no teatro. Ser pessoa é carregar um papel diante dos outros.',
-  garrafa:'Provavelmente do árabe <em>gharrāfa</em> (“jarro”), que chegou ao português pela Península Ibérica.',
+  cadeira:'Do latim <em>cathedra</em>, do grego <em>kathédra</em> (“assento”). Mesma raiz de “cátedra” e “catedral”.',
+  pessoa:'Do latim <em>persona</em>, a máscara usada no teatro.',
+  garrafa:'Provavelmente do árabe <em>gharrāfa</em> (“jarro”).',
   copo:'Do latim <em>cuppa</em> (“taça, cuba”).',
-  livro:'Do latim <em>liber</em>: a casca interna das árvores, onde antigamente se escrevia.',
+  livro:'Do latim <em>liber</em>: a casca interna das árvores, onde se escrevia.',
   mesa:'Do latim <em>mensa</em>.',
-  celular:'Do latim <em>cellula</em> (“pequena cela”). O nome vem das células de cobertura da rede de antenas.',
-  relógio:'Do latim <em>horologium</em>, do grego <em>hōrológion</em>: “o que diz as horas”.',
+  celular:'Do latim <em>cellula</em> (“pequena cela”), das células de cobertura da rede.',
+  relógio:'Do latim <em>horologium</em>, do grego <em>hōrológion</em> (“o que diz as horas”).',
   tesoura:'Do latim <em>tonsoria</em> (“a que tosquia”).',
   garfo:'Do latim <em>furca</em> (“forcado”).',
-  colher:'Do latim <em>cochleare</em>, de <em>cochlea</em> (“caracol”): a concha virou ferramenta.',
-  sofá:'Do árabe <em>ṣuffa</em> (“banco, almofada”), via línguas europeias.',
+  colher:'Do latim <em>cochleare</em>, de <em>cochlea</em> (“caracol”).',
+  sofá:'Do árabe <em>ṣuffa</em> (“banco, almofada”).',
   cama:'Do latim tardio <em>cama</em> (“leito baixo”).',
-  televisão:'Híbrido: grego <em>têle</em> (“longe”) + latim <em>visio</em> (“visão”).',
-  notebook:'O inglês <em>notebook</em> é “caderno”. A raiz de computador, latim <em>computare</em>, é “calcular”: <em>com</em> + <em>putare</em> (“podar, pensar”).',
-  carro:'Do latim <em>carrus</em>, palavra de origem céltica (gaulesa).',
-  bicicleta:'Do francês <em>bicyclette</em>: <em>bi-</em> (“dois”) + grego <em>kýklos</em> (“roda, círculo”).',
+  televisão:'Grego <em>têle</em> (“longe”) + latim <em>visio</em> (“visão”).',
+  notebook:'Inglês <em>notebook</em> (“caderno”). “Computador” vem do latim <em>computare</em> (“calcular”).',
+  carro:'Do latim <em>carrus</em>, de origem céltica.',
+  bicicleta:'Francês <em>bicyclette</em>: <em>bi-</em> (“dois”) + grego <em>kýklos</em> (“roda”).',
   gato:'Do latim tardio <em>cattus</em>.',
-  cachorro:'Origem discutida; uma hipótese liga a <em>catulus</em> (“filhote”) em latim.',
-  planta:'Do latim <em>planta</em>: “broto” e também “sola do pé”.',
+  cachorro:'Origem discutida; uma hipótese liga a <em>catulus</em> (“filhote”).',
+  planta:'Do latim <em>planta</em>: “broto” e “sola do pé”.',
   mochila:'Provavelmente do basco <em>motxil</em>.',
-  maçã:'Do latim <em>(mala) matiana</em>, uma variedade de maçã.',
-  banana:'De línguas da África Ocidental, levada ao português por navegadores.',
-  laranja:'Do árabe <em>nāranj</em>, que vem do persa <em>nārang</em> e, antes, do sânscrito.',
+  maçã:'Do latim <em>(mala) matiana</em>.',
+  banana:'De línguas da África Ocidental.',
+  laranja:'Do árabe <em>nāranj</em>, do persa <em>nārang</em>, antes do sânscrito.',
   ônibus:'Do latim <em>omnibus</em> (“para todos”).',
   vaso:'Do latim <em>vas</em> (“recipiente”).',
   geladeira:'De “gelo”, do latim <em>gelu</em>.',
-  mouse:'Do inglês <em>mouse</em> (“camundongo”), pelo fio que lembrava um rabo.',
-  tigela:'Origem incerta; palavra de uso antigo no português.'
-};
+  mouse:'Inglês <em>mouse</em> (“camundongo”), pelo fio que lembrava um rabo.'};
 const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 const ETIM_N = {}; Object.keys(ETIM).forEach(k => ETIM_N[norm(k)] = k);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-/* ---------- Elementos ---------- */
-const video = document.getElementById('camera');
-const canvas = document.getElementById('overlay');
-const ctx = canvas.getContext('2d');
-const statusEl = document.getElementById('status');
-const legenda = document.getElementById('legenda');
-const legConteudo = document.getElementById('legConteudo');
-let facing = 'environment', stream = null, model = null, faceDet = null;
-let rostosOn = true, boxes = [], faces = [], busy = false, ocrBusy = false;
-let alvoAtual = null, alvoFixoAte = 0, ocrAte = 0;
+/* ================= ESTADO ================= */
+const $ = id => document.getElementById(id);
+const video = $('camera'), canvas = $('overlay'), ctx = canvas.getContext('2d');
+const strip = $('strip'), ficha = $('ficha');
+let facing = 'environment', stream = null, model = null, faceDet = null, rostosOn = true;
+let boxes = [], prev = [], faces = [], busy = false, ocrBusy = false, ms = 0;
+let fichaBox = null, fichaId = 0, registro = [], K = 1;
+try { K = parseFloat(localStorage.getItem('kfoco')) || 1; } catch(e){}
+const setStatus = t => $('status').textContent = t;
 
-function setStatus(t){ statusEl.textContent = t; }
-function mostrar(html){ legConteudo.innerHTML = html; legenda.style.display = 'block'; }
-function esconder(){ legenda.style.display = 'none'; alvoAtual = null; }
-document.getElementById('fechar').onclick = esconder;
-
-/* ---------- Câmera ---------- */
+/* ================= CÂMERA E MODELOS ================= */
 async function iniciarCamera(){
   if (stream) stream.getTracks().forEach(t => t.stop());
-  if (!navigator.mediaDevices?.getUserMedia){ setStatus('Navegador sem acesso à câmera (use HTTPS).'); return; }
+  if (!navigator.mediaDevices?.getUserMedia){ setStatus('Sem acesso à câmera (use HTTPS).'); return; }
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:facing }, audio:false });
-    video.srcObject = stream;
-    await video.play();
-    setStatus(model ? 'Aponte e toque nos quadrados vermelhos.' : 'Carregando modelo de objetos…');
+    video.srcObject = stream; await video.play();
+    setStatus(model ? 'Aponte e toque num objeto.' : 'Carregando modelo de objetos…');
   } catch(e){ setStatus('Permita o acesso à câmera para continuar.'); }
 }
-document.getElementById('btnCam').onclick = () => { facing = facing === 'environment' ? 'user' : 'environment'; iniciarCamera(); };
-
-/* ---------- Modelos ---------- */
 async function carregarModelos(){
-  try {
-    model = await cocoSsd.load({ base:'lite_mobilenet_v2' });
-    setStatus('Aponte e toque nos quadrados vermelhos.');
-  } catch(e){ setStatus('Falha ao carregar o modelo de objetos (precisa de internet).'); }
-  if ('FaceDetector' in window){
-    try { faceDet = new FaceDetector({ fastMode:true, maxDetectedFaces:5 }); } catch(e){}
-  }
+  try { model = await cocoSsd.load({ base:'lite_mobilenet_v2' }); setStatus('Aponte e toque num objeto.'); }
+  catch(e){ setStatus('Falha ao carregar o modelo (precisa de internet).'); }
+  if ('FaceDetector' in window){ try { faceDet = new FaceDetector({ fastMode:true, maxDetectedFaces:5 }); } catch(e){} }
 }
 
-/* ---------- Mapeamento vídeo → tela (object-fit: cover) ---------- */
-function mapa(){
-  const vw = video.videoWidth, vh = video.videoHeight, cw = innerWidth, ch = innerHeight;
-  const s = Math.max(cw/vw, ch/vh);
-  return { s, ox:(cw - vw*s)/2, oy:(ch - vh*s)/2 };
-}
+/* ================= GEOMETRIA ================= */
+function mapa(){ const vw = video.videoWidth, vh = video.videoHeight, s = Math.max(innerWidth/vw, innerHeight/vh);
+  return { s, ox:(innerWidth-vw*s)/2, oy:(innerHeight-vh*s)/2 }; }
 function paraTela(b){ const m = mapa(); return { x:b[0]*m.s+m.ox, y:b[1]*m.s+m.oy, w:b[2]*m.s, h:b[3]*m.s }; }
 
-/* ---------- Laço de detecção ---------- */
+/* Distância monocular (modelo pinhole): d = f · tamanho real / tamanho em pixels */
+function distancia(nome, vb){
+  const r = REAL[nome]; if (!r) return null;
+  const px = r[0]==='h' ? vb[3] : r[0]==='w' ? vb[2] : Math.max(vb[2], vb[3]);
+  const f = 0.785 * Math.max(video.videoWidth, video.videoHeight) * K;   // FOV ≈ 65° no lado maior
+  return f * r[1] / px;
+}
+const fmt = d => d.toFixed(1).replace('.', ',');
+const distTxt = b => b && b.d != null ? (b.parcial ? '≥' : '~') + fmt(b.d) + ' m' : 'dist. n/d';
+
+/* ================= DETECÇÃO ================= */
 async function detectar(){
+  let delay = 80;
   if (!busy && model && video.readyState >= 2 && video.videoWidth){
-    busy = true;
+    busy = true; const t0 = performance.now();
     try {
+      const vw = video.videoWidth, vh = video.videoHeight;
       const preds = await model.detect(video, 8, 0.5);
-      boxes = preds.map(p => ({ ...paraTela(p.bbox), nome:PT[p.class] || p.class, score:p.score }));
+      const novos = preds.map(p => {
+        const vb = p.bbox, nome = PT[p.class] || p.class, t = paraTela(vb);
+        const b = { ...t, vb, nome, score:p.score, mov:false };
+        b.parcial = vb[0] < 4 || vb[1] < 4 || vb[0]+vb[2] > vw-4 || vb[1]+vb[3] > vh-4;
+        const raw = distancia(nome, vb);
+        const cx = vb[0]+vb[2]/2, cy = vb[1]+vb[3]/2;
+        let q = null, dm = 1e9;                                   // rastreia o mesmo objeto no quadro anterior
+        prev.forEach(o => { if (o.nome === nome){ const dd = Math.hypot(o.cx-cx, o.cy-cy); if (dd < dm){ dm = dd; q = o; } } });
+        if (q && dm < vw*0.2){ b.mov = dm > vw*0.02; b.d = raw != null && q.d != null ? q.d*0.6 + raw*0.4 : raw; }
+        else b.d = raw;
+        b.cx = cx; b.cy = cy; return b;
+      });
+      boxes = novos; prev = novos;
+      const n = {}; boxes.forEach(b => n[b.nome] = (n[b.nome]||0) + 1); boxes.forEach(b => b.qtd = n[b.nome]);
       if (rostosOn && faceDet){
         const f = await faceDet.detect(video);
         faces = f.map(r => { const b = r.boundingBox; return paraTela([b.x,b.y,b.width,b.height]); });
       } else faces = [];
-      atualizarLegenda();
+      ms = Math.round(performance.now() - t0);
+      atualizarStrip();
     } catch(e){}
-    busy = false;
+    busy = false; delay = Math.max(50, ms*0.5);               // laço adaptativo: aliviado em aparelhos lentos
   }
-  setTimeout(detectar, 120);
+  setTimeout(detectar, delay);
 }
 
 function desenhar(){
   canvas.width = innerWidth; canvas.height = innerHeight;
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.lineWidth = 3; ctx.font = 'bold 15px "Courier New",monospace';
+  ctx.clearRect(0,0,canvas.width,canvas.height); ctx.font = 'bold 14px "Courier New",monospace';
   boxes.forEach(b => {
-    const ativo = b === alvoAtual;
-    ctx.strokeStyle = ativo ? '#ff3333' : 'rgba(204,0,0,.85)';
-    ctx.lineWidth = ativo ? 4 : 2;
+    const sel = b === fichaBox || (fichaBox && b.nome === fichaBox.nome && Math.hypot(b.cx-fichaBox.cx, b.cy-fichaBox.cy) < 80);
+    ctx.strokeStyle = sel ? '#ff3333' : 'rgba(204,0,0,.9)'; ctx.lineWidth = sel ? 4 : 2;
     ctx.strokeRect(b.x, b.y, b.w, b.h);
-    const t = `${b.nome} ${Math.round(b.score*100)}%`, tw = ctx.measureText(t).width + 12;
-    ctx.fillStyle = '#cc0000'; ctx.fillRect(b.x, Math.max(0,b.y-24), tw, 24);
-    ctx.fillStyle = '#fff'; ctx.fillText(t, b.x+6, Math.max(17,b.y-7));
+    const t = `${b.nome} ${distTxt(b)}`, tw = ctx.measureText(t).width + 12;
+    ctx.fillStyle = '#cc0000'; ctx.fillRect(b.x, Math.max(0, b.y-24), tw, 24);
+    ctx.fillStyle = '#fff'; ctx.fillText(t, b.x+6, Math.max(17, b.y-7));
   });
-  faces.forEach(f => {
-    ctx.strokeStyle = '#ffd000'; ctx.lineWidth = 3; ctx.strokeRect(f.x, f.y, f.w, f.h);
-    ctx.fillStyle = '#ffd000'; ctx.fillRect(f.x, f.y+f.h, 62, 22);
-    ctx.fillStyle = '#000'; ctx.fillText('rosto', f.x+6, f.y+f.h+16);
-  });
+  faces.forEach(f => { ctx.strokeStyle = '#ffd000'; ctx.lineWidth = 3; ctx.strokeRect(f.x, f.y, f.w, f.h);
+    ctx.fillStyle = '#ffd000'; ctx.fillRect(f.x, f.y+f.h, 62, 22); ctx.fillStyle = '#000'; ctx.fillText('rosto', f.x+6, f.y+f.h+16); });
   requestAnimationFrame(desenhar);
 }
 
-/* ---------- Legendas ---------- */
-function escavacao(nome){
-  const k = ETIM_N[norm(nome)];
-  return k ? ETIM[k] : 'Ainda sem escavação no dicionário local para esta palavra.';
+/* ================= SEMAS CONTEXTUAIS (ao vivo) ================= */
+function semasCtx(b){
+  const c = [], cx = (b.x + b.w/2)/innerWidth, cy = (b.y + b.h/2)/innerHeight;
+  if (b.d != null) c.push(b.d < 1.5 ? '+próximo' : b.d > 4 ? '+distante' : '+distância média');
+  c.push(Math.abs(cx-.5) < .2 && Math.abs(cy-.5) < .2 ? '+central' : '+periférico');
+  c.push(b.mov ? '+em movimento' : '+estático');
+  if (b.qtd > 1) c.push('+múltiplo (×' + b.qtd + ')');
+  if (b.w*b.h > innerWidth*innerHeight*0.25) c.push('+dominante no campo');
+  return c;
 }
-function htmlObjeto(b){
-  return `<h2>[Escavação: ${b.nome}]</h2>${escavacao(b.nome)}<div class="tag">confiança ${Math.round(b.score*100)}%</div>`;
-}
-function maisPerto(){
-  const cx = innerWidth/2, cy = innerHeight/2; let melhor = null, d0 = 1e9;
-  boxes.forEach(b => { const d = Math.hypot(b.x+b.w/2-cx, b.y+b.h/2-cy); if (d < d0){ d0 = d; melhor = b; } });
-  return melhor;
-}
-function atualizarLegenda(){
-  const agora = Date.now();
-  if (agora < ocrAte || agora < alvoFixoAte) return;       // texto lido ou toque recente ficam na tela
-  const b = maisPerto();
-  if (!b){ if (alvoAtual) esconder(); return; }
-  if (!alvoAtual || alvoAtual.nome !== b.nome){ mostrar(htmlObjeto(b)); }
-  alvoAtual = b;
-}
-canvas.addEventListener('pointerdown', e => {
-  const hit = boxes.filter(b => e.clientX>=b.x && e.clientX<=b.x+b.w && e.clientY>=b.y && e.clientY<=b.y+b.h)
-                   .sort((a,c) => a.w*a.h - c.w*c.h)[0];
-  if (hit){ alvoAtual = hit; alvoFixoAte = Date.now() + 8000; ocrAte = 0; mostrar(htmlObjeto(hit)); }
-});
-document.getElementById('btnRosto').onclick = e => {
-  rostosOn = !rostosOn; e.currentTarget.classList.toggle('off', !rostosOn);
-  e.currentTarget.innerHTML = rostosOn ? 'ROSTOS<br>ON' : 'ROSTOS<br>OFF';
-  if (rostosOn && !faceDet) setStatus('Este navegador não detecta rostos; “pessoa” segue funcionando.');
-};
+const tags = (l, k) => l.length ? l.map(x => `<span class="tag ${k}">[${esc(x)}]</span>`).join('') : '<span class="mudo">nenhum catalogado</span>';
 
-/* ---------- Leitura de texto (OCR) ---------- */
-document.getElementById('btnTexto').onclick = async () => {
+/* ================= STRIP (legenda automática) ================= */
+function atualizarStrip(){
+  if (ficha.style.display === 'block') return;
+  if (!boxes.length){ strip.style.display = 'none'; return; }
+  const cx = innerWidth/2, cy = innerHeight/2;
+  const b = boxes.slice().sort((a,c) => Math.hypot(a.x+a.w/2-cx, a.y+a.h/2-cy) - Math.hypot(c.x+c.w/2-cx, c.y+c.h/2-cy))[0];
+  const s = semasDe(b.nome);
+  strip.innerHTML = `<b>${esc(b.nome)}</b> · ${distTxt(b)} · ${Math.round(b.score*100)}%<br>${tags(s.n.slice(0,3),'n')}<small>toque no quadrado para a ficha completa · ${ms} ms</small>`;
+  strip.style.display = 'block';
+}
+
+/* ================= FICHA SEMIÓTICA ================= */
+function abrirFicha(r){
+  const b = r.box || null, s = semasDe(r.nome), my = ++fichaId;
+  fichaBox = b; strip.style.display = 'none';
+  const sc = b ? semasCtx(b) : [];
+  const k = ETIM_N[norm(r.nome)];
+  ficha.innerHTML = `<span class="x" data-x="1">×</span>
+    <h2>${esc(r.nome)}</h2>
+    <div class="meta">${b ? `distância ${distTxt(b)}${K !== 1 ? ' (calibrada)' : ''} · confiança ${Math.round(b.score*100)}%` : 'consulta por termo'}</div>
+    <h3>Semas</h3>
+    <div>Nucleares ${tags(s.n,'n')}</div><div>Diferenciais ${tags(s.d,'d')}</div>
+    <div>Contextuais ${b ? tags(sc,'c') : '<span class="mudo">só com objeto na câmera</span>'}</div>
+    <h3>Taxonomia</h3>
+    <div>${s.t.length ? esc(s.t.join(' › ')) + ' › <b>' + esc(r.nome) + '</b>' : '<span class="mudo">sem cadeia local</span>'}</div>
+    <div id="ag-tx" class="mudo">Wikidata: consultando…</div>
+    ${b ? `<h3>Signo (tríade de Peirce)</h3>
+    <div><b>Ícone:</b> a imagem do objeto na câmera.<br><b>Índice:</b> a medida de ${distTxt(b)} e a posição ${sc.includes('+central') ? 'central' : 'periférica'} no campo.<br><b>Símbolo:</b> a palavra “${esc(r.nome)}”, ligada ao objeto por convenção.</div>` : ''}
+    <h3>Etimologia local</h3><div>${k ? ETIM[k] : '<span class="mudo">sem registro local; veja as fontes abaixo.</span>'}</div>
+    <h3>Agente · fontes públicas</h3>
+    <div class="fonte" id="ag-wd">Wikcionário: consultando…</div>
+    <div class="fonte" id="ag-wp">Wikipédia: consultando…</div>`;
+  ficha.style.display = 'block'; ficha.scrollTop = 0;
+  const reg = { t:new Date().toISOString(), termo:r.nome, distancia_m:b?.d ?? null, confianca:b?.score ?? null,
+    semas:{ nucleares:s.n, diferenciais:s.d, contextuais:sc }, fontes:{} };
+  registro.push(reg); consultar(r.nome, reg, my);
+}
+function fechar(){ ficha.style.display = 'none'; fichaBox = null; }
+ficha.addEventListener('click', e => {
+  if (e.target.dataset.x) fechar();
+  if (e.target.classList.contains('chip')) abrirFicha({ nome:e.target.dataset.t });
+});
+
+/* ================= AGENTE: consulta a bases públicas ================= */
+const cache = new Map();
+const run = (k, fn, t) => { const key = k + ':' + t; if (!cache.has(key)) cache.set(key, fn(t)); return cache.get(key); };
+const enc = encodeURIComponent;
+
+async function wikcionario(t){
+  const r = await fetch(`https://pt.wiktionary.org/w/api.php?action=parse&page=${enc(t)}&prop=text&redirects=1&format=json&formatversion=2&origin=*`);
+  const j = await r.json(); if (!j.parse) return null;
+  const doc = new DOMParser().parseFromString(j.parse.text, 'text/html');
+  const defs = [...doc.querySelectorAll('ol > li')].slice(0,3).map(li => {
+    const c = li.cloneNode(true); c.querySelectorAll('ul,dl,ol').forEach(x => x.remove()); return c.textContent.trim(); }).filter(Boolean);
+  let et = ''; const h = [...doc.querySelectorAll('h2,h3,h4')].find(h => /Etimologia/i.test(h.textContent));
+  if (h){ let n = (h.closest('.mw-heading') || h).nextElementSibling; if (n) et = n.textContent.trim().slice(0, 400); }
+  return { defs, et, url:`https://pt.wiktionary.org/wiki/${enc(t)}` };
+}
+async function wikipedia(t){
+  const r = await fetch(`https://pt.wikipedia.org/api/rest_v1/page/summary/${enc(t)}`); if (!r.ok) return null;
+  const j = await r.json();
+  return { titulo:j.title, texto:j.extract, desc:j.description, amb:j.type === 'disambiguation', url:j.content_urls?.desktop?.page };
+}
+async function wikidata(t){
+  const w = 'https://www.wikidata.org/w/api.php?format=json&origin=*&';
+  const s = await (await fetch(w + `action=wbsearchentities&search=${enc(t)}&language=pt&uselang=pt&type=item&limit=1`)).json();
+  const e = s.search?.[0]; if (!e) return null;
+  const g = await (await fetch(w + `action=wbgetentities&ids=${e.id}&props=claims`)).json();
+  const cl = g.entities?.[e.id]?.claims || {};
+  const ids = [...(cl.P279||[]), ...(cl.P31||[])].map(c => c.mainsnak?.datavalue?.value?.id).filter(Boolean).slice(0,5);
+  let supers = [];
+  if (ids.length){
+    const l = await (await fetch(w + `action=wbgetentities&ids=${ids.join('|')}&props=labels&languages=pt|en`)).json();
+    supers = ids.map(i => l.entities?.[i]?.labels?.pt?.value || l.entities?.[i]?.labels?.en?.value).filter(Boolean);
+  }
+  return { id:e.id, desc:e.description, supers, url:`https://www.wikidata.org/wiki/${e.id}` };
+}
+function consultar(t, reg, my){
+  const set = (id, h) => { if (my === fichaId){ const el = $(id); if (el) el.innerHTML = h; } };
+  const vazio = f => `${f}: <span class="mudo">sem resultado (sem internet ou sem verbete).</span>`;
+  run('wd', wikcionario, t).then(x => { reg.fontes.wikcionario = x;
+    set('ag-wd', x ? `<b>Wikcionário</b>${x.defs.length ? '<ol>' + x.defs.map(d => `<li>${esc(d)}</li>`).join('') + '</ol>' : ' <span class="mudo">sem definições lidas</span>'}${x.et ? `<div><i>Etimologia:</i> ${esc(x.et)}</div>` : ''}<a href="${x.url}" target="_blank" rel="noopener">abrir verbete</a>` : vazio('Wikcionário')); }).catch(() => set('ag-wd', vazio('Wikcionário')));
+  run('wp', wikipedia, t).then(x => { reg.fontes.wikipedia = x;
+    set('ag-wp', x ? `<b>Wikipédia</b> · ${esc(x.titulo)}${x.amb ? ' <span class="mudo">(página de desambiguação)</span>' : ''}<div>${esc((x.texto||'').slice(0, 420))}${(x.texto||'').length > 420 ? '…' : ''}</div><a href="${x.url}" target="_blank" rel="noopener">abrir artigo</a>` : vazio('Wikipédia')); }).catch(() => set('ag-wp', vazio('Wikipédia')));
+  run('wk', wikidata, t).then(x => { reg.fontes.wikidata = x;
+    set('ag-tx', x ? `Wikidata <a href="${x.url}" target="_blank" rel="noopener" style="color:var(--dif)">${x.id}</a>: ${esc(x.desc || 'sem descrição')}${x.supers.length ? ' · é um(a) ' + esc(x.supers.join(', ')) : ''} <span class="mudo">(1ª correspondência; pode ser ambígua)</span>` : 'Wikidata: <span class="mudo">sem correspondência.</span>'); }).catch(() => set('ag-tx', 'Wikidata: <span class="mudo">indisponível.</span>'));
+}
+
+/* ================= INTERAÇÃO ================= */
+canvas.addEventListener('pointerdown', e => {
+  const hit = boxes.filter(b => e.clientX >= b.x && e.clientX <= b.x+b.w && e.clientY >= b.y && e.clientY <= b.y+b.h)
+                   .sort((a,c) => a.w*a.h - c.w*c.h)[0];
+  if (hit) abrirFicha({ nome:hit.nome, box:{ ...hit } }); else fechar();
+});
+$('btnRosto').onclick = e => { rostosOn = !rostosOn; e.currentTarget.classList.toggle('off', !rostosOn);
+  e.currentTarget.innerHTML = rostosOn ? 'ROSTOS<br>ON' : 'ROSTOS<br>OFF';
+  if (rostosOn && !faceDet) setStatus('Este navegador não detecta rostos; “pessoa” segue funcionando.'); };
+$('btnCam').onclick = () => { facing = facing === 'environment' ? 'user' : 'environment'; iniciarCamera(); };
+$('btnAgente').onclick = () => { const t = prompt('Palavra ou conceito para o agente consultar:'); if (t && t.trim()) abrirFicha({ nome:t.trim().toLowerCase() }); };
+$('btnCalib').onclick = () => {
+  if (!fichaBox || fichaBox.d == null){ setStatus('Toque num objeto com distância estimada e depois em CALIBRAR.'); return; }
+  const real = parseFloat((prompt(`Distância real até “${fichaBox.nome}” em metros:`) || '').replace(',', '.'));
+  if (!(real > 0)) return;
+  K = Math.min(3, Math.max(0.3, K * real / fichaBox.d));
+  try { localStorage.setItem('kfoco', K); } catch(e){}
+  setStatus(`Calibrado (fator ${K.toFixed(2)}).`); fechar();
+};
+$('btnExp').onclick = () => {
+  const blob = new Blob([JSON.stringify({ gerado:new Date().toISOString(), fatorFoco:K, registros:registro }, null, 2)], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `semas-${Date.now()}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  setStatus(`${registro.length} registros exportados.`);
+};
+$('btnTexto').onclick = async () => {
   if (ocrBusy || !video.videoWidth) return;
   if (!window.Tesseract){ setStatus('Leitor de texto indisponível (precisa de internet).'); return; }
   ocrBusy = true; setStatus('Lendo texto…');
-  mostrar('<h2>[Lendo…]</h2>Mantenha o texto parado e bem iluminado.');
   try {
     const c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight;
     c.getContext('2d').drawImage(video, 0, 0);
     const { data } = await Tesseract.recognize(c, 'por');
-    const texto = data.text.trim();
-    if (!texto){ mostrar('<h2>[Nenhum texto encontrado]</h2>Aproxime a câmera e tente de novo.'); }
-    else {
-      const achadas = [...new Set(texto.split(/[^\p{L}]+/u).map(norm).filter(w => ETIM_N[w]))];
-      const extra = achadas.map(w => `<p><strong>${ETIM_N[w]}</strong>: ${ETIM[ETIM_N[w]]}</p>`).join('');
-      const seguro = texto.replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
-      mostrar(`<h2>[Texto no ambiente]</h2><div class="ocr">${seguro}</div>${extra}`);
-    }
-    ocrAte = Date.now() + 12000;
-  } catch(e){ mostrar('<h2>[Erro]</h2>Não foi possível ler o texto agora.'); }
-  ocrBusy = false; setStatus('Aponte e toque nos quadrados vermelhos.');
+    const texto = data.text.trim(); strip.style.display = 'none'; fichaBox = null; ++fichaId;
+    const palavras = [...new Set(texto.split(/[^\p{L}]+/u).map(w => w.toLowerCase()).filter(w => w.length >= 4))].slice(0, 12);
+    ficha.innerHTML = `<span class="x" data-x="1">×</span><h2>Texto no ambiente</h2>` + (texto
+      ? `<div class="ocr">${esc(texto)}</div><h3>Toque numa palavra para o agente consultar</h3>${palavras.map(w => `<button class="chip" data-t="${esc(w)}">${esc(w)}</button>`).join('')}`
+      : '<div class="mudo">Nenhum texto encontrado. Aproxime a câmera e use boa luz.</div>');
+    ficha.style.display = 'block'; if (texto) registro.push({ t:new Date().toISOString(), tipo:'ocr', texto });
+  } catch(e){ setStatus('Não foi possível ler o texto agora.'); }
+  ocrBusy = false; setStatus('Aponte e toque num objeto.');
 };
 
-/* ---------- Início ---------- */
 iniciarCamera(); carregarModelos(); detectar(); desenhar();
 </script>
 </body>
