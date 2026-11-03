@@ -2,3847 +2,574 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEMAS SCANNER - Taxonomizador Linguístico Vivo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Carimbo do Macaco - AR Scanner</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* Reset e variáveis baseadas no SEMAS Scanner */
         :root {
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #1a1a2e;
-            --bg-tertiary: #16213e;
+            --bg-primary: rgba(10, 10, 15, 0.85);
+            --bg-secondary: rgba(26, 26, 46, 0.9);
             --accent-green: #00ff41;
             --accent-cyan: #00ffff;
             --accent-amber: #ffb000;
+            --accent-red: #cc0000;
             --text-primary: #e0e0e0;
-            --text-secondary: #a0a0a0;
-            --text-mono: #00ff41;
+            --text-mono: 'Courier New', Courier, monospace;
             --border-color: #333333;
-            --card-bg: rgba(30, 30, 50, 0.3);
             --glow-green: 0 0 10px rgba(0, 255, 65, 0.5);
-            --glow-cyan: 0 0 10px rgba(0, 255, 255, 0.5);
-            --glow-amber: 0 0 10px rgba(255, 176, 0, 0.5);
+            --glow-red: 0 0 15px rgba(204, 0, 0, 0.8);
         }
 
-        body {
-            font-family: 'JetBrains Mono', 'Courier New', monospace;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            overflow-x: hidden;
-            overflow-y: hidden;
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
             height: 100vh;
-            position: relative;
+            overflow: hidden;
+            background-color: #000;
+            font-family: var(--text-mono);
+            color: var(--text-primary);
+            touch-action: none; /* Impede scroll no mobile */
         }
 
-        /* Scanning grid background */
-        body::before {
-            content: '';
-            position: fixed;
+        /* Câmera ao fundo */
+        #camera {
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: 
-                linear-gradient(var(--accent-green) 1px, transparent 1px),
-                linear-gradient(90deg, var(--accent-green) 1px, transparent 1px);
-            background-size: 50px 50px;
-            opacity: 0.03;
-            z-index: -1;
-            animation: scanPulse 20s ease-in-out infinite;
+            object-fit: cover;
+            z-index: 1;
+            transform: scaleX(-1); /* Efeito espelho para parecer VR */
+            display: none; /* Mostrado via JS */
         }
 
-        @keyframes scanPulse {
-            0%, 100% { opacity: 0.03; }
-            50% { opacity: 0.08; }
-        }
-
-        /* Terminal cursor */
-        body::after {
-            content: '_';
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            color: var(--accent-green);
-            font-size: 20px;
-            animation: blink 1s infinite;
-            z-index: 1000;
+        /* HUD Principal */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
             pointer-events: none;
-        }
-
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
-        }
-
-        /* Main container */
-        #app {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
             display: flex;
             flex-direction: column;
-            padding: 20px;
+            justify-content: space-between;
         }
 
-        /* Header */
-        header {
+        /* Header estilo SEMAS */
+        .top-bar {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--accent-green);
+            padding: 10px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 20px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
             box-shadow: var(--glow-green);
-            animation: headerPulse 3s ease-in-out infinite;
+            pointer-events: auto;
         }
 
-        @keyframes headerPulse {
-            0%, 100% { box-shadow: var(--glow-green); }
-            50% { box-shadow: var(--glow-cyan); }
-        }
-
-        .header-left {
+        .logo-area {
             display: flex;
             align-items: center;
-            gap: 15px;
-        }
-
-        .logo {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(45deg, var(--accent-green), var(--accent-cyan));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: var(--bg-primary);
-            animation: logoRotate 10s linear infinite;
-        }
-
-        @keyframes logoRotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        h1 {
-            font-size: 1.5rem;
+            gap: 10px;
             color: var(--accent-green);
-            text-shadow: var(--glow-green);
+            font-weight: bold;
             letter-spacing: 2px;
+            text-shadow: var(--glow-green);
         }
 
-        .status-bar {
+        .status-indicators {
             display: flex;
-            gap: 20px;
-            font-size: 0.9rem;
+            gap: 15px;
+            font-size: 12px;
+            color: var(--text-secondary);
         }
 
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .status-indicator {
-            width: 10px;
-            height: 10px;
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             background: var(--accent-green);
-            animation: pulse 2s ease-in-out infinite;
+            margin-right: 5px;
+            animation: pulse 1.5s infinite;
         }
 
-        .status-indicator.warning {
-            background: var(--accent-amber);
+        /* Área central para os nós flutuantes */
+        #ar-viewport {
+            flex-grow: 1;
+            position: relative;
+            pointer-events: none;
         }
 
-        .status-indicator.error {
-            background: #ff4444;
+        /* Retículo central */
+        #reticle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border: 1px dashed var(--accent-cyan);
+            border-radius: 50%;
+            opacity: 0.5;
+            pointer-events: none;
+            animation: spin 10s linear infinite;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.2); }
-        }
-
-        /* Main content area */
-        .main-content {
-            display: grid;
-            grid-template-columns: 300px 1fr;
-            gap: 20px;
-            height: calc(100vh - 100px);
-            overflow: hidden;
-        }
-
-        /* Left sidebar - Control Panel */
-        .sidebar {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
+        /* Nós de Escavação (Dados) */
+        .node {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: var(--accent-red);
+            border: 2px solid var(--text-primary);
             border-radius: 8px;
-            padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            backdrop-filter: blur(10px);
-            box-shadow: var(--glow-cyan);
-            overflow-y: auto;
-        }
-
-        .panel {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 15px;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: var(--glow-red);
             transition: all 0.3s ease;
+            animation: float 3s ease-in-out infinite;
         }
 
-        .panel:hover {
-            box-shadow: var(--glow-green);
+        .node:hover, .node:active {
+            transform: scale(1.1) !important;
+            background-color: #ff3333;
+            box-shadow: 0 0 25px rgba(255, 0, 0, 1);
+        }
+
+        .node-label {
+            font-size: 10px;
+            margin-top: 2px;
+            color: var(--accent-amber);
+        }
+
+        /* Posições dos nós (simulando detecção no caderno) */
+        #node-1 { top: 30%; left: 25%; animation-delay: 0s; }
+        #node-2 { top: 65%; left: 65%; animation-delay: 0.5s; }
+        #node-3 { top: 45%; left: 80%; animation-delay: 1s; }
+
+        /* Painel de Detalhes (O "Scanner" aberto) */
+        #scanner-panel {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            bottom: 10px;
+            width: 350px;
+            background: var(--bg-primary);
+            border: 1px solid var(--accent-cyan);
+            box-shadow: var(--glow-cyan);
+            border-radius: 8px;
+            display: none; /* Escondido por padrão */
+            flex-direction: column;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+            z-index: 20;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .panel-header {
+            background: var(--bg-secondary);
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .panel-title {
             color: var(--accent-cyan);
-            font-size: 1rem;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .panel-title::before {
-            content: '▶';
-            font-size: 0.8rem;
-            animation: arrowPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes arrowPulse {
-            0%, 100% { opacity: 0.5; transform: translateX(0); }
-            50% { opacity: 1; transform: translateX(3px); }
-        }
-
-        /* Control buttons */
-        .controls {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .btn {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--accent-green);
-            color: var(--accent-green);
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: inherit;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        .btn:hover::before {
-            left: 100%;
-        }
-
-        .btn:hover {
-            background: rgba(0, 255, 65, 0.1);
-            box-shadow: var(--glow-green);
-        }
-
-        .btn.active {
-            background: rgba(0, 255, 65, 0.2);
-            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
-        }
-
-        .btn.warning {
-            border-color: var(--accent-amber);
-            color: var(--accent-amber);
-        }
-
-        .btn.warning:hover {
-            background: rgba(255, 176, 0, 0.1);
-            box-shadow: var(--glow-amber);
-        }
-
-        /* Status indicators */
-        .status-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            font-size: 0.85rem;
-        }
-
-        .status-cell {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px;
-            background: var(--bg-primary);
-            border-radius: 4px;
-            border-left: 3px solid var(--accent-green);
-        }
-
-        .status-value {
             font-weight: bold;
-            color: var(--accent-cyan);
+            font-size: 14px;
         }
 
-        /* Text area for input */
-        #textInput {
-            width: 100%;
-            height: 100px;
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            padding: 10px;
-            font-family: inherit;
-            border-radius: 4px;
-            resize: none;
-            margin-bottom: 10px;
-        }
-
-        #textInput:focus {
-            outline: none;
-            border-color: var(--accent-cyan);
-            box-shadow: var(--glow-cyan);
-        }
-
-        /* Main visualization area */
-        .main-visualization {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            position: relative;
-            overflow: hidden;
-            backdrop-filter: blur(10px);
-            box-shadow: var(--glow-amber);
-        }
-
-        .visualization-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 20px;
-            background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .visualization-title {
-            color: var(--accent-amber);
-            font-size: 1.1rem;
-        }
-
-        .capture-mode-selector {
-            display: flex;
-            gap: 10px;
-        }
-
-        .mode-btn {
-            padding: 5px 10px;
+        .close-btn {
             background: transparent;
             border: 1px solid var(--text-secondary);
             color: var(--text-secondary);
             border-radius: 4px;
             cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.3s ease;
+            padding: 2px 8px;
         }
 
-        .mode-btn.active {
-            border-color: var(--accent-cyan);
-            color: var(--accent-cyan);
-            background: rgba(0, 255, 255, 0.1);
+        .close-btn:hover {
+            color: #ff4444;
+            border-color: #ff4444;
         }
 
-        /* Capture flow area */
-        .capture-flow {
-            height: calc(100% - 60px);
-            position: relative;
-            overflow: hidden;
-            background: radial-gradient(circle at center, rgba(0, 255, 65, 0.05) 0%, transparent 70%);
-        }
-
-        /* Word units */
-        .word-unit {
-            position: absolute;
-            padding: 8px 15px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            animation: floatIn 0.5s ease-out;
-            backdrop-filter: blur(5px);
-        }
-
-        @keyframes floatIn {
-            0% {
-                opacity: 0;
-                transform: translateY(20px) scale(0.8);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        .word-unit:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
-            z-index: 10;
-        }
-
-        .word-unit.state-detected {
-            border-color: var(--accent-green);
-            color: var(--accent-green);
-        }
-
-        .word-unit.state-isolated {
-            border-color: var(--accent-cyan);
-            color: var(--accent-cyan);
-            animation: pulseBorder 2s ease-in-out infinite;
-        }
-
-        @keyframes pulseBorder {
-            0%, 100% { border-color: var(--accent-cyan); box-shadow: 0 0 5px rgba(0, 255, 255, 0.5); }
-            50% { border-color: var(--accent-amber); box-shadow: 0 0 15px rgba(255, 176, 0, 0.8); }
-        }
-
-        .word-unit.state-decomposed {
-            border-color: var(--accent-amber);
-            color: var(--accent-amber);
-        }
-
-        .word-unit.state-classified {
-            border-color: var(--accent-green);
-            background: rgba(0, 255, 65, 0.1);
-        }
-
-        .word-unit.state-related {
-            border-color: var(--accent-cyan);
-            background: rgba(0, 255, 255, 0.1);
-        }
-
-        .word-unit.state-archived {
-            border-color: var(--text-secondary);
-            opacity: 0.6;
-            animation: fadeOut 3s ease-in forwards;
-        }
-
-        @keyframes fadeOut {
-            to { opacity: 0; transform: translateY(-20px); }
-        }
-
-        .word-content {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .word-text {
-            font-weight: bold;
-        }
-
-        .word-confidence {
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-        }
-
-        .word-state-indicator {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--accent-green);
-            animation: blinkDot 1s ease-in-out infinite;
-        }
-
-        .word-state-indicator.uncertain {
-            background: var(--accent-amber);
-        }
-
-        .word-state-indicator.low-confidence {
-            background: #ff4444;
-        }
-
-        @keyframes blinkDot {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-
-        /* Connections */
-        .connections-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 5;
-        }
-
-        .connection {
-            stroke: var(--text-secondary);
-            stroke-width: 1;
-            fill: none;
-            opacity: 0.3;
-            marker-end: url(#arrowhead);
-            transition: all 0.3s ease;
-        }
-
-        .connection.suspected {
-            stroke: var(--accent-amber);
-            stroke-dasharray: 5,5;
-        }
-
-        .connection.high-confidence {
-            stroke: var(--accent-green);
-            stroke-width: 2;
-            opacity: 0.6;
-        }
-
-        .connection:hover {
-            stroke-width: 3;
-            stroke-opacity: 0.8;
-            pointer-events: stroke;
-            cursor: pointer;
-        }
-
-        /* Right panels - Tabs */
-        .panels-container {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-
-        .tabs-header {
+        /* Abas do Painel */
+        .tabs {
             display: flex;
             background: var(--bg-secondary);
             border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
         }
 
-        .tab-btn {
-            padding: 12px 20px;
-            background: transparent;
-            border: none;
+        .tab {
+            padding: 8px 12px;
+            font-size: 11px;
             color: var(--text-secondary);
             cursor: pointer;
-            font-family: inherit;
-            font-size: 0.9rem;
             border-bottom: 2px solid transparent;
-            transition: all 0.3s ease;
+            white-space: nowrap;
         }
 
-        .tab-btn:hover {
-            color: var(--text-primary);
-            background: rgba(255, 255, 255, 0.05);
+        .tab.active {
+            color: var(--accent-green);
+            border-bottom-color: var(--accent-green);
+            background: rgba(0, 255, 65, 0.05);
         }
 
-        .tab-btn.active {
-            color: var(--accent-cyan);
-            border-bottom-color: var(--accent-cyan);
-            background: rgba(0, 255, 255, 0.05);
+        /* Conteúdo das Abas */
+        .panel-content {
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.4;
+            flex-grow: 1;
         }
 
         .tab-content {
             display: none;
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
+            animation: fadeIn 0.3s;
         }
 
         .tab-content.active {
             display: block;
         }
 
-        /* Word detail view */
-        .word-detail {
-            background: var(--bg-primary);
-            border-radius: 6px;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-left: 4px solid var(--accent-green);
-            animation: slideInRight 0.3s ease-out;
-        }
-
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .detail-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .detail-word {
-            font-size: 1.2rem;
-            color: var(--accent-green);
-            font-weight: bold;
-        }
-
-        .detail-confidence {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .confidence-bar {
-            width: 100px;
-            height: 6px;
-            background: var(--bg-tertiary);
-            border-radius: 3px;
-            overflow: hidden;
-        }
-
-        .confidence-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ff4444, var(--accent-amber), var(--accent-green));
-            transition: width 0.5s ease;
-        }
-
-        .detail-grid {
+        /* Estilos internos do painel (tags, grids) */
+        .data-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .detail-section {
-            background: var(--bg-secondary);
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid var(--border-color);
-        }
-
-        .section-title {
-            color: var(--accent-cyan);
-            font-size: 0.9rem;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .section-title::before {
-            content: '▸';
-            font-size: 0.7rem;
-        }
-
-        .semas-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-        }
-
-        .sema-tag {
-            background: rgba(0, 255, 65, 0.1);
-            border: 1px solid var(--accent-green);
-            color: var(--accent-green);
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            animation: semaPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes semaPulse {
-            0%, 100% { opacity: 0.8; }
-            50% { opacity: 1; box-shadow: 0 0 5px rgba(0, 255, 65, 0.5); }
-        }
-
-        .sema-tag.different {
-            background: rgba(0, 255, 255, 0.1);
-            border-color: var(--accent-cyan);
-            color: var(--accent-cyan);
-        }
-
-        .sema-tag.contextual {
-            background: rgba(255, 176, 0, 0.1);
-            border-color: var(--accent-amber);
-            color: var(--accent-amber);
-        }
-
-        .etymology-content {
-            font-size: 0.85rem;
-            line-height: 1.4;
-        }
-
-        .etymology-entry {
+            gap: 10px;
             margin-bottom: 10px;
-            padding-left: 15px;
+        }
+
+        .data-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            border-radius: 4px;
             border-left: 2px solid var(--accent-amber);
         }
 
-        .etymology-from {
-            color: var(--accent-amber);
+        .data-label {
+            color: var(--text-secondary);
+            font-size: 10px;
+            margin-bottom: 4px;
+        }
+
+        .data-value {
+            color: var(--accent-green);
             font-weight: bold;
         }
 
-        .etymology-to {
-            color: var(--accent-green);
-        }
-
-        /* Taxonomy view */
-        .taxonomy-tree {
-            background: var(--bg-primary);
-            border-radius: 6px;
-            padding: 15px;
-        }
-
-        .taxonomy-node {
-            margin-bottom: 5px;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateX(-10px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .node-header {
-            display: flex;
-            align-items: center;
-            padding: 8px 12px;
-            background: var(--bg-secondary);
-            border-radius: 4px;
-            margin-bottom: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .node-header:hover {
+        .sema-tag {
+            display: inline-block;
             background: rgba(0, 255, 255, 0.1);
-            box-shadow: var(--glow-cyan);
-        }
-
-        .node-icon {
-            margin-right: 10px;
             color: var(--accent-cyan);
-            font-weight: bold;
-        }
-
-        .node-label {
-            flex: 1;
-            font-size: 0.9rem;
-        }
-
-        .node-count {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            margin-left: 10px;
-        }
-
-        .node-children {
-            margin-left: 25px;
-            margin-top: 5px;
-            border-left: 1px dashed var(--border-color);
-            padding-left: 10px;
-        }
-
-        /* Field visualization */
-        .field-canvas {
-            width: 100%;
-            height: 400px;
-            background: radial-gradient(circle at center, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            position: relative;
-        }
-
-        /* Memory panel */
-        .memory-entry {
-            background: var(--bg-primary);
-            border-radius: 4px;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-left: 3px solid var(--accent-amber);
-            animation: memorySlide 0.3s ease-out;
-        }
-
-        @keyframes memorySlide {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .memory-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .memory-word {
-            font-weight: bold;
-            color: var(--accent-green);
-        }
-
-        .memory-timestamp {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-        }
-
-        /* Observatory stats */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-        }
-
-        .stat-card {
-            background: var(--bg-primary);
-            border-radius: 6px;
-            padding: 15px;
-            border: 1px solid var(--border-color);
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--glow-green);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--accent-cyan);
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        .stat-trend {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-            margin-top: 8px;
-            font-size: 0.75rem;
-        }
-
-        .trend-up {
-            color: var(--accent-green);
-        }
-
-        .trend-down {
-            color: #ff4444;
-        }
-
-        /* Modal overlay */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 2000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-            backdrop-filter: blur(5px);
-        }
-
-        .modal-overlay.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .modal {
-            background: var(--card-bg);
-            border: 2px solid var(--accent-green);
-            border-radius: 10px;
-            padding: 30px;
-            max-width: 80%;
-            max-height: 80%;
-            overflow-y: auto;
-            box-shadow: 0 0 50px rgba(0, 255, 65, 0.3);
-            animation: modalAppear 0.3s ease-out;
-        }
-
-        @keyframes modalAppear {
-            from {
-                opacity: 0;
-                transform: scale(0.9) translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .modal-title {
-            color: var(--accent-green);
-            font-size: 1.3rem;
-        }
-
-        .modal-close {
-            background: transparent;
-            border: 1px solid var(--text-secondary);
-            color: var(--text-secondary);
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-
-        .modal-close:hover {
-            background: rgba(255, 68, 68, 0.2);
-            border-color: #ff4444;
-            color: #ff4444;
-        }
-
-        /* Notification system */
-        .notification-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 3000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .notification {
-            background: var(--card-bg);
             border: 1px solid var(--accent-cyan);
-            border-radius: 6px;
-            padding: 12px 20px;
-            color: var(--text-primary);
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
-            animation: slideInRight 0.3s ease-out;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            max-width: 400px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin: 2px;
         }
 
-        .notification.success {
-            border-color: var(--accent-green);
-        }
-
-        .notification.warning {
+        .sema-tag.warning {
+            background: rgba(255, 176, 0, 0.1);
+            color: var(--accent-amber);
             border-color: var(--accent-amber);
         }
 
-        .notification.error {
-            border-color: #ff4444;
+        /* Animações */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
         }
 
-        .notification-icon {
-            flex-shrink: 0;
-        }
-
-        /* Loading indicator */
-        .loading-indicator {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            border: 2px solid var(--accent-cyan);
-            border-radius: 10px;
-            padding: 30px;
-            text-align: center;
-            z-index: 5000;
-            display: none;
-        }
-
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid var(--bg-primary);
-            border-top: 3px solid var(--accent-cyan);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
 
-        /* Selection highlight */
-        ::selection {
-            background: rgba(0, 255, 65, 0.3);
-            color: var(--text-primary);
+        @keyframes slideIn {
+            from { transform: translateX(50px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
-        ::-webkit-scrollbar-track {
-            background: var(--bg-primary);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--bg-tertiary);
-            border-radius: 5px;
-            border: 1px solid var(--accent-green);
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--accent-green);
-        }
-
-        /* Tooltip */
-        .tooltip {
+        /* Instrução inicial */
+        #instruction {
             position: absolute;
-            background: var(--bg-secondary);
-            border: 1px solid var(--accent-cyan);
-            border-radius: 4px;
-            padding: 8px 12px;
-            font-size: 0.85rem;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            z-index: 4000;
-            max-width: 300px;
-            backdrop-filter: blur(5px);
-        }
-
-        .tooltip.show {
-            opacity: 1;
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 1200px) {
-            .main-content {
-                grid-template-columns: 250px 1fr;
-            }
-        }
-
-        @media (max-width: 900px) {
-            .main-content {
-                grid-template-columns: 200px 1fr;
-            }
-            
-            .sidebar {
-                padding: 15px;
-            }
-            
-            .tab-btn {
-                padding: 10px 15px;
-                font-size: 0.8rem;
-            }
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: var(--bg-primary);
+            padding: 20px;
+            border: 1px solid var(--accent-green);
+            border-radius: 8px;
+            box-shadow: var(--glow-green);
+            z-index: 100;
+            pointer-events: auto;
+            cursor: pointer;
         }
     </style>
+</head>
+<body>
 
-    <!-- SVG definitions for connections -->
-    <svg width="0" height="0" style="position:absolute">
-        <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="7" 
-                    viewBox="0 0 10 7" refX="8" refY="3.5" orient="auto">
-                <polygon points="0 0, 10 3.5, 0 7" fill="var(--accent-cyan)" opacity="0.5" />
-            </marker>
-        </defs>
-    </svg>
+    <!-- Câmera -->
+    <video id="camera" autoplay playsinline muted></video>
 
-    <body>
-        <div id="app">
-            <!-- Header -->
-            <header>
-                <div class="header-left">
-                    <div class="logo">S</div>
-                    <h1>SEMAS SCANNER</h1>
-                    <div class="status-bar">
-                        <div class="status-item">
-                            <div class="status-indicator"></div>
-                            <span>ONLINE</span>
-                        </div>
-                        <div class="status-item">
-                            <div class="status-indicator"></div>
-                            <span id="captureStatus">CAPTURA ATIVA</span>
-                        </div>
-                        <div class="status-item">
-                            <div class="status-indicator"></div>
-                            <span id="analysisStatus">ANÁLISE CONCLUÍDA</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="controls" style="flex-direction: row; gap: 10px;">
-                    <button class="btn" id="pauseBtn">PAUSAR</button>
-                    <button class="btn" id="speedBtn">VEL. 1x</button>
-                    <button class="btn warning" id="clearFlowBtn">LIMPAR FLUXO</button>
-                    <button class="btn" id="exportBtn">EXPORTAR</button>
-                </div>
-            </header>
-
-            <!-- Main Content -->
-            <div class="main-content">
-                <!-- Left Sidebar -->
-                <aside class="sidebar">
-                    <!-- Basic Controls -->
-                    <div class="panel">
-                        <div class="panel-title">Controles Operacionais</div>
-                        <textarea id="textInput" placeholder="Insira texto para análise..."></textarea>
-                        <div class="controls">
-                            <button class="btn" id="analyzeTextBtn">ANALISAR TEXTO</button>
-                            <button class="btn" id="manualWordBtn">ADICIONAR PALAVRA</button>
-                            <select id="textAreaSelector">
-                                <option value="">Observar área...</option>
-                                <option value="body">Documento inteiro</option>
-                                <option value="main">RGN principal</option>
-                                <option value="input">Campo de entrada</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Status Dashboard -->
-                    <div class="panel">
-                        <div class="panel-title">Painel de Status</div>
-                        <div class="status-grid">
-                            <div class="status-cell">
-                                <span>Palavras detectadas</span>
-                                <span class="status-value" id="totalWords">0</span>
-                            </div>
-                            <div class="status-cell">
-                                <span>Unidades lexicais</span>
-                                <span class="status-value" id="lexicalUnits">0</span>
-                            </div>
-                            <div class="status-cell">
-                                <span>Semas identificados</span>
-                                <span class="status-value" id="semasCount">0</span>
-                            </div>
-                            <div class="status-cell">
-                                <span>Sememas reconstruídos</span>
-                                <span class="status-value" id="sememesCount">0</span>
-                            </div>
-                            <div class="status-cell">
-                                <span>Raízes identificadas</span>
-                                <span class="status-value" id="rootsCount">0</span>
-                            </div>
-                            <div class="status-cell">
-                                <span>Relacionamentos</span>
-                                <span class="status-value" id="relationsCount">0</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Filters -->
-                    <div class="panel">
-                        <div class="panel-title">Filtros de Captura</div>
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <select class="mode-btn" id="filterGrammatical">
-                                <option value="">Classe gramatical</option>
-                                <option value="NOUN">Substantivo</option>
-                                <option value="VERB">Verbo</option>
-                                <option value="ADJ">Adjetivo</option>
-                                <option value="ADV">Advérbio</option>
-                            </select>
-                            <select class="mode-btn" id="filterSemantic">
-                                <option value="">Campo semântico</option>
-                                <option value="ACTION">Ação</option>
-                                <option value="PERCEPTION">Percepção</option>
-                                <option value="SPACE">Espaço</option>
-                                <option value="TIME">Tempo</option>
-                            </select>
-                            <select class="mode-btn" id="filterLevel">
-                                <option value="">Nível de captura</option>
-                                <option value="I">Grafêmico</option>
-                                <option value="II">Morfológico</option>
-                                <option value="III">Diacrônico</option>
-                            </select>
-                            <button class="btn" id="applyFiltersBtn">APLICAR FILTROS</button>
-                            <button class="btn warning" id="clearFiltersBtn">LIMPAR FILTROS</button>
-                        </div>
-                    </div>
-
-                    <!-- Memory Preview -->
-                    <div class="panel">
-                        <div class="panel-title">Memória de Captura</div>
-                        <div id="memoryPreview">
-                            <div class="memory-entry" style="margin-bottom: 8px;">
-                                <div class="memory-header">
-                                    <span class="memory-word">cadeira</span>
-                                    <span class="memory-timestamp">02:34</span>
-                                </div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">
-                                    [+assento] [+suporte]
-                                </div>
-                            </div>
-                            <div class="memory-entry" style="margin-bottom: 8px;">
-                                <div class="memory-header">
-                                    <span class="memory-word">rio</span>
-                                    <span class="memory-timestamp">02:36</span>
-                                </div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">
-                                    [+fluxo] [+água] [+curso]
-                                </div>
-                            </div>
-                            <div class="memory-entry">
-                                <div class="memory-header">
-                                    <span class="memory-word">amigo</span>
-                                    <span class="memory-timestamp">02:38</span>
-                                </div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">
-                                    [+relação] [+conhecido]
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </aside>
-
-                <!-- Main Visualization Area -->
-                <div class="panels-container">
-                    <!-- Tabs Header -->
-                    <div class="tabs-header">
-                        <button class="tab-btn active" data-tab="microscope">MICROSCOPIO</button>
-                        <button class="tab-btn" data-tab="taxonomy">TAXONOMIA</button>
-                        <button class="tab-btn" data-tab="philology">FILOLOGIA</button>
-                        <button class="tab-btn" data-tab="genealogy">GENEALOGIA</button>
-                        <button class="tab-btn" data-tab="field">CAMPO SEMÂNTICO</button>
-                        <button class="tab-btn" data-tab="memory">MEMÓRIA</button>
-                        <button class="tab-btn" data-tab="observatory">OBSERVATÓRIO</button>
-                    </div>
-
-                    <!-- Tab Contents -->
-                    <div class="tab-content active" id="microscope">
-                        <div id="wordDetails">
-                            <!-- Word details will appear here -->
-                            <div class="word-detail" style="margin-bottom: 15px;">
-                                <div class="detail-header">
-                                    <div class="detail-word">cadeira</div>
-                                    <div class="detail-confidence">
-                                        <span>Confiança: 94%</span>
-                                        <div class="confidence-bar">
-                                            <div class="confidence-fill" style="width: 94%"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="detail-grid">
-                                    <div class="detail-section">
-                                        <div class="section-title">Nível Morfológico</div>
-                                        <div>ca + dir(a) [composição]</div>
-                                    </div>
-                                    <div class="detail-section">
-                                        <div class="section-title">Classes Gramaticais</div>
-                                        <div>feminino, substantivo, concreto</div>
-                                    </div>
-                                    <div class="detail-section">
-                                        <div class="section-title">Semas Nucleares</div>
-                                        <div class="semas-list">
-                                            <span class="sema-tag"> [+assento]</span>
-                                            <span class="sema-tag"> [+suporte corporal]</span>
-                                        </div>
-                                    </div>
-                                    <div class="detail-section">
-                                        <div class="section-title">Semas Diferenciais</div>
-                                        <div class="semas-list">
-                                            <span class="sema-tag different"> [-coletivo]</span>
-                                            <span class="sema-tag different"> [-móvel]</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div style="margin-top: 15px;">
-                                    <div class="section-title">Etimologia</div>
-                                    <div class="etymology-content">
-                                        <div class="etymology-entry">
-                                            <span class="etymology-from">LATIM</span> → <span class="etymology-to">português "cadeira"</span>
-                                        </div>
-                                        <div class="etymology-entry">
-                                            <span class="etymology-from">ITALIANO</span> → <span class="etymology-to">antigo "cadera"</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-content" id="taxonomy">
-                        <div class="taxonomy-tree">
-                            <div class="taxonomy-node">
-                                <div class="node-header">
-                                    <span class="node-icon">▤</span>
-                                    <span class="node-label">OBJETOS</span>
-                                    <span class="node-count">24</span>
-                                </div>
-                                <div class="node-children">
-                                    <div class="taxonomy-node">
-                                        <div class="node-header">
-                                            <span class="node-icon">▥</span>
-                                            <span class="node-label">MÓVEIS</span>
-                                            <span class="node-count">8</span>
-                                        </div>
-                                        <div class="node-children">
-                                            <div class="taxonomy-node">
-                                                <div class="node-header">
-                                                    <span class="node-icon">▶</span>
-                                                    <span class="node-label">CADEIRA</span>
-                                                    <span class="node-count">3</span>
-                                                </div>
-                                            </div>
-                                            <div class="taxonomy-node">
-                                                <div class="node-header">
-                                                    <span class="node-icon">▶</span>
-                                                    <span class="node-label">MES</span>
-                                                    <span class="node-count">3</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="taxonomy-node">
-                                <div class="node-header">
-                                    <span class="node-icon">▤</span>
-                                    <span class="node-label">ENTIDADES</span>
-                                    <span class="node-count">12</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-content" id="philology">
-                        <div style="background: var(--bg-primary); border-radius: 6px; padding: 15px;">
-                            <div style="margin-bottom: 20px;">
-                                <h3 style="color: var(--accent-amber); margin-bottom: 10px;">Investigação Etimológica</h3>
-                                
-                                <div class="etymology-entry">
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                        <span><strong>ÁGUA</strong> (LATINUS)</span>
-                                        <span style="color: var(--accent-green);">100% confiabilidade</span>
-                                    </div>
-                                    <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                                        <strong>Forma atual:</strong> água<br>
-                                        <strong>Lema:</strong> aqu-<br>
-                                        <strong>Etimologia:</strong> Latim "aqua", de raiz IE *h₂ekʷos<br>
-                                        <strong>Significado histórico:</strong> água, líquido, corrente<br>
-                                        <strong>Mudanças fonéticas:</strong> /k/ → /k/ (mantido)<br>
-                                        <strong>Cognatos:</strong> Grego "ὕδωρ" (húdōr), Inglês "water"
-                                    </div>
-                                </div>
-
-                                <div class="etymology-entry">
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                        <span><strong>AMIGO</strong> (LATINUS)</span>
-                                        <span style="color: var(--accent-amber);">75% confiabilidade</span>
-                                    </div>
-                                    <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                                        <strong>Forma atual:</strong> amigo<br>
-                                        <strong>Lema:</strong> amīgō<br>
-                                        <strong>Etimologia:</strong> Latim "amicus", de *amīcus (amigo, íntimo)<br>
-                                        <strong>Significado histórico:</strong> amigo, companheiro, aliado<br>
-                                        <strong>Mudanças fonéticas:</strong> /mīkʊs/ → /amiˈɣo/<br>
-                                        <strong>Cognatos:</strong> Espanhol "amigo", Italiano "amico"
-                                    </div>
-                                </div>
-
-                                <div class="etymology-entry">
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                        <span><strong>ESTRELA</strong> (LATINUS)</span>
-                                        <span style="color: #ff4444;">60% confiabilidade</span>
-                                    </div>
-                                    <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                                        <strong>Forma atual:</strong> estrela<br>
-                                        <strong>Lema:</strong> *stēlā<br>
-                                        <strong>Etimologia:</strong> Proposto Latim "*stēlā" de raiz IE *stēr- (brilhar)<br>
-                                        <strong>Significado histórico:</strong> estrela, corpo celeste<br>
-                                        <strong>Mudanças fonéticas:</strong> /steːla/ → /eˈtʃeɫɐ/<br>
-                                        <strong>Cognatos:</strong> Grego "ἀστήρ" (astēr), Inglês "star"
-                                        <br><em style="color: #ff4444;">[Hipótese semítica requer mais dados]</em>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-content" id="genealogy">
-                        <div style="background: var(--bg-primary); border-radius: 6px; padding: 15px;">
-                            <h3 style="color: var(--accent-cyan); margin-bottom: 15px;">Famílias Lexicais</h3>
-                            
-                            <div style="margin-bottom: 20px;">
-                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                    <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--accent-green);"></div>
-                                    <strong style="color: var(--accent-green);">FAMÍLIA DO LATIM</strong>
-                                </div>
-                                
-                                <div style="margin-left: 30px;">
-                                    <div style="padding: 8px; background: var(--bg-secondary); border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--accent-green);">
-                                        <strong>RELAÇÕES:</strong> 42 membros
-                                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
-                                            água → aqua → aqueous → humidifier
-                                        </div>
-                                    </div>
-                                    
-                                    <div style="padding: 8px; background: var(--bg-secondary); border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--accent-cyan);">
-                                        <strong>RAMO ROMANO:</strong> 28 membros
-                                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
-                                            amigo → amicus → amicable → amity
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style="margin-bottom: 20px;">
-                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                    <div style="width: 20px; height: 20px; border-radius: 50%; background: var(--accent-amber);"></div>
-                                    <strong style="color: var(--accent-amber);">FAMÍLIA GERMÂNICA</strong>
-                                </div>
-                                
-                                <div style="margin-left: 30px;">
-                                    <div style="padding: 8px; background: var(--bg-secondary); border-radius: 4px; margin-bottom: 8px; border-left: 3px solid var(--accent-amber);">
-                                        <strong>RELAÇÕES:</strong> 37 membros
-                                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
-                                            coração → Herze → Herz → heart
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style="margin-bottom: 20px;">
-                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                    <div style="width: 20px; height: 20px; border-radius: 50%; background: #ff4444;"></div>
-                                    <strong style="color: #ff4444;">FAMÍLIA INDO-EUROPEIA</strong>
-                                </div>
-                                
-                                <div style="margin-left: 30px;">
-                                    <div style="padding: 8px; background: var(--bg-secondary); border-radius: 4px; margin-bottom: 8px; border-left: 3px solid #ff4444;">
-                                        <strong>RAIZ RECONSTRUÍDA:</strong> *h₂ekʷos (água)
-                                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
-                                            *h₂ekʷos → latino "aqua" → inglês "water"
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-content" id="field">
-                        <div class="field-canvas" id="fieldCanvas">
-                            <!-- Field visualization will be rendered here -->
-                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: var(--text-secondary);">
-                                <div style="font-size: 2rem; margin-bottom: 10px;">⚛</div>
-                                <div>Campo semântico vazio</div>
-                                <div style="font-size: 0.85rem; margin-top: 5px;">Selecione palavras para visualizar relações</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-content" id="memory">
-                        <div style="background: var(--bg-primary); border-radius: 6px; padding: 15px;">
-                            <h3 style="color: var(--accent-amber); margin-bottom: 15px;">Memória de Captura</h3>
-                            
-                            <div id="memoryEntries">
-                                <!-- Memory entries will appear here -->
-                                <div class="memory-entry">
-                                    <div class="memory-header">
-                                        <span class="memory-word">observar</span>
-                                        <span class="memory-timestamp">00:00</span>
-                                    </div>
-                                    <div style="margin-top: 8px;">
-                                        <div style="font-size: 0.85rem; margin-bottom: 5px;">
-                                            <strong>Semas:</strong> 
-                                            <span class="sema-tag">[+ver]</span>
-                                            <span class="sema-tag">[+perceber]</span>
-                                            <span class="sema-tag contextal">[+olhar]</span>
-                                        </div>
-                                        <div style="font-size: 0.85rem; margin-bottom: 5px;">
-                                            <strong>Semema:</strong> Traços unificados de percepção visual
-                                        </div>
-                                        <div style="font-size: 0.85rem; margin-bottom: 5px;">
-                                            <strong>Etimologia:</strong> Latim "observare" → português "observar"
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="memory-entry">
-                                    <div class="memory-header">
-                                        <span class="memory-word">sombra</span>
-                                        <span class="memory-timestamp">00:05</span>
-                                    </div>
-                                    <div style="margin-top: 8px;">
-                                        <div style="font-size: 0.85rem; margin-bottom: 5px;">
-                                            <strong>Semas:</strong> 
-                                            <span class="sema-tag">[+objeto]</span>
-                                            <span class="sema-tag">[+escuridão]</span>
-                                            <span class="sema-tag different">[+protegido]</span>
-                                        </div>
-                                        <div style="font-size: 0.85rem; margin-bottom: 5px;">
-                                            <strong>Semema:</strong> Traços de corpo não iluminado
-                                        </div>
-                                        <div style="font-size: 0.85rem; margin-bottom: 5px;">
-                                            <strong>Etimologia:</strong> Latim "umbra" → português "sombra"
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-content" id="observatory">
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-value" id="obs-total-words">0</div>
-                                <div class="stat-label">Palavras Detectadas</div>
-                                <div class="stat-trend">
-                                    <span class="trend-up">↗</span>
-                                    <span>12.5% hoje</span>
-                                </div>
-                            </div>
-                            
-                            <div class="stat-card">
-                                <div class="stat-value" id="obs-lexical-units">0</div>
-                                <div class="stat-label">Unidades Lexicais</div>
-                                <div class="stat-trend">
-                                    <span class="trend-up">↗</span>
-                                    <span>8.3% hoje</span>
-                                </div>
-                            </div>
-                            
-                            <div class="stat-card">
-                                <div class="stat-value" id="obs-semas">0</div>
-                                <div class="stat-label">Semas Identificados</div>
-                                <div class="stat-trend">
-                                    <span class="trend-down">↘</span>
-                                    <span>-2.1% hoje</span>
-                                </div>
-                            </div>
-                            
-                            <div class="stat-card">
-                                <div class="stat-value" id="obs-sememes">0</div>
-                                <div class="stat-label">Sememas Reconstruídos</div>
-                                <div class="stat-trend">
-                                    <span class="trend-up">↗</span>
-                                    <span>5.7% hoje</span>
-                                </div>
-                            </div>
-                            
-                            <div class="stat-card">
-                                <div class="stat-value" id="obs-roots">0</div>
-                                <div class="stat-label">Raízes Identificadas</div>
-                                <div class="stat-trend">
-                                    <span class="trend-up">↗</span>
-                                    <span>15.3% hoje</span>
-                                </div>
-                            </div>
-                            
-                            <div class="stat-card">
-                                <div class="stat-value" id="obs-relations">0</div>
-                                <div class="stat-label">Relações Estabelecidas</div>
-                                <div class="stat-trend">
-                                    <span class="trend-up">↗</span>
-                                    <span>22.8% hoje</span>
-                                </div>
-                            </div>
-                            
-                            <div class="stat-card">
-                                <div class="stat-value" id="obs-etymology">0</div>
-                                <div class="stat-label">Investigações Etimológicas</div>
-                                <div class="stat-trend">
-                                    <span class="trend-up">↗</span>
-                                    <span>9.4% hoje</span>
-                                </div>
-                            </div>
-                            
-                            <div class="stat-card" style="border-color: var(--accent-amber);">
-                                <div class="stat-value" id="obs-pending">0</div>
-                                <div class="stat-label">Classificações Pendentes</div>
-                                <div class="stat-trend">
-                                    <span style="color: var(--accent-amber);">⚠</span>
-                                    <span>Alto volume</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="margin-top: 30px;">
-                            <h3 style="color: var(--accent-cyan); margin-bottom: 15px;">Atividade Recente</h3>
-                            <div style="background: var(--bg-primary); border-radius: 6px; padding: 15px; max-height: 300px; overflow-y: auto;">
-                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green);"></div>
-                                    <span style="color: var(--text-primary); flex: 1;">"observar" - SEMAS reconstruídos: [+ver] [+perceber]</span>
-                                    <span style="color: var(--text-secondary); font-size: 0.8rem;">2 min atrás</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-cyan);"></div>
-                                    <span style="color: var(--text-primary); flex: 1;">"água" - Etimologia latina confirmada</span>
-                                    <span style="color: var(--text-secondary); font-size: 0.8rem;">5 min atrás</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
-                                    <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-amber);"></div>
-                                    <span style="color: var(--text-primary); flex: 1;">"cadeira" - Relação estabelecida com "mesa"</span>
-                                    <span style="color: var(--text-secondary); font-size: 0.8rem;">8 min atrás</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                    <div style="width: 8px; height: 8px; border-radius: 50%; background: #ff4444;"></div>
-                                    <span style="color: var(--text-primary); flex: 1;">"estrela" - Hipótese semítica requer dados</span>
-                                    <span style="color: var(--text-secondary); font-size: 0.8rem;">12 min atrás</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- HUD Principal -->
+    <div id="hud">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="logo-area">
+                <span>▶</span> CARIMBO DO MACACO [AR]
             </div>
-
-            <!-- Capture Flow Area -->
-            <div class="capture-flow" id="captureFlow">
-                <!-- Words will appear here dynamically -->
+            <div class="status-indicators">
+                <span><span class="status-dot"></span>CAPTURA</span>
+                <span><span class="status-dot" style="background: var(--accent-amber);"></span>ENJOO</span>
+                <span><span class="status-dot" style="background: #ff4444;"></span>CRISTAL</span>
             </div>
-
-            <!-- Connections Layer -->
-            <div class="connections-layer" id="connectionsLayer">
-                <!-- Connection lines will be rendered here -->
-            </div>
-
-            <!-- Modal Overlay -->
-            <div class="modal-overlay" id="modalOverlay">
-                <div class="modal">
-                    <div class="modal-header">
-                        <div class="modal-title">Análise Completa</div>
-                        <button class="modal-close" id="modalClose">&times;</button>
-                    </div>
-                    <div id="modalContent">
-                        <!-- Modal content will be inserted here -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Notifications -->
-            <div class="notification-container" id="notificationContainer"></div>
-
-            <!-- Loading Indicator -->
-            <div class="loading-indicator" id="loadingIndicator">
-                <div class="loading-spinner"></div>
-                <div>Análise em progresso...</div>
-            </div>
-
-            <!-- Tooltip -->
-            <div class="tooltip" id="tooltip"></div>
         </div>
 
-        <script>
-            // SEMAS SCANNER - Complete Linguistic Taxonomy System
-            // Version 1.0 - November 3, 2026
+        <!-- Viewport AR -->
+        <div id="ar-viewport">
+            <div id="reticle"></div>
+
+            <!-- Nós de Interação -->
+            <div class="node" id="node-1" onclick="openScanner('node-1')">
+                1
+                <div class="node-label">ETIMOLOGIA</div>
+            </div>
             
-            class SEMASScanner {
-                constructor() {
-                    this.currentDate = new Date('2026-11-03');
-                    this.initialized = false;
-                    this.wordCount = 0;
-                    this.lexicalUnitsCount = 0;
-                    this.semasCount = 0;
-                    this.sememesCount = 0;
-                    this.rootsCount = 0;
-                    this.relationsCount = 0;
-                    this.etymologyCount = 0;
-                    this.pendingCount = 0;
-                    this.words = new Map(); // word text -> word object
-                    this.relations = [];
-                    this.domObserver = null;
-                    this.captureFlow = document.getElementById('captureFlow');
-                    this.connectionsLayer = document.getElementById('connectionsLayer');
-                    this.wordDetails = document.getElementById('wordDetails');
-                    this.memoryPreview = document.getElementById('memoryPreview');
-                    this.memoryEntries = document.getElementById('memoryEntries');
-                    this.stats = {};
-                    this.config = {
-                        captureArea: 'body',
-                        speed: 1,
-                        autoCapture: true,
-                        sensitivity: 'medium',
-                        showUncertain: true,
-                        animateNewWords: true
-                    };
-                    
-                    // Core engines
-                    this.captureEngine = new CaptureEngine(this);
-                    this.lexicalAnalyzer = new LexicalAnalyzer(this);
-                    this.morphologyEngine = new MorphologyEngine(this);
-                    this.sememeEngine = new SememeEngine(this);
-                    this.etymologyEngine = new EtymologyEngine(this);
-                    this.taxonomyEngine = new TaxonomyEngine(this);
-                    this.semanticRelationsEngine = new SemanticRelationsEngine(this);
-                    this.visualRenderer = new VisualRenderer(this);
-                    this.memoryManager = new MemoryManager(this);
-                    
-                    // UI state
-                    this.selectedWord = null;
-                    this.activeFilters = {};
-                    this.tabCache = {};
-                    
-                    this.init();
-                }
-                
-                init() {
-                    if (this.initialized) return;
-                    
-                    this.setupEventListeners();
-                    this.setupMutationObserver();
-                    this.loadSavedData();
-                    this.initializeStatistics();
-                    
-                    // Initialize core data
-                    this.initializeCoreData();
-                    
-                    // Generate initial demo words
-                    this.generateDemoWords();
-                    
-                    this.initialized = true;
-                    
-                    this.notify('Sistema SEMAS Scanner inicializado', 'success');
-                }
-                
-                setupEventListeners() {
-                    // Control buttons
-                    document.getElementById('pauseBtn').addEventListener('click', () => {
-                        this.togglePause();
-                    });
-                    
-                    document.getElementById('speedBtn').addEventListener('click', () => {
-                        this.toggleSpeed();
-                    });
-                    
-                    document.getElementById('clearFlowBtn').addEventListener('click', () => {
-                        this.clearFlow();
-                    });
-                    
-                    document.getElementById('exportBtn').addEventListener('click', () => {
-                        this.exportData();
-                    });
-                    
-                    // Text analysis
-                    document.getElementById('analyzeTextBtn').addEventListener('click', () => {
-                        this.analyzeText();
-                    });
-                    
-                    document.getElementById('manualWordBtn').addEventListener('click', () => {
-                        this.showManualInput();
-                    });
-                    
-                    // Text area input
-                    document.getElementById('textInput').addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            this.analyzeText();
+            <div class="node" id="node-2" onclick="openScanner('node-2')">
+                2
+                <div class="node-label">TECNO F.</div>
+            </div>
+            
+            <div class="node" id="node-3" onclick="openScanner('node-3')">
+                3
+                <div class="node-label">REVERSO</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Painel do Scanner -->
+    <div id="scanner-panel">
+        <div class="panel-header">
+            <div class="panel-title" id="panel-title">ANÁLISE DE NÓ</div>
+            <button class="close-btn" onclick="closeScanner()">✕</button>
+        </div>
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('tab-semantica')">SEMÂNTICA</div>
+            <div class="tab" onclick="switchTab('tab-filologia')">FILOLOGIA</div>
+            <div class="tab" onclick="switchTab('tab-interacao')">INTERAÇÃO</div>
+        </div>
+        <div class="panel-content">
+            <!-- Conteúdo Dinâmico -->
+            <div id="tab-semantica" class="tab-content active"></div>
+            <div id="tab-filologia" class="tab-content"></div>
+            <div id="tab-interacao" class="tab-content"></div>
+        </div>
+    </div>
+
+    <!-- Instrução Inicial -->
+    <div id="instruction" onclick="startAR()">
+        <h2>INICIAR CAPACETE VR</h2>
+        <p>Toque para permitir o acesso à câmera.<br>Gire o celular para a horizontal.</p>
+    </div>
+
+    <script>
+        // Variável para armazenar o vídeo
+        const video = document.getElementById('camera');
+
+        // 1. Inicialização da Câmera e AR
+        function startAR() {
+            const instruction = document.getElementById('instruction');
+            
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                    .then(function (stream) {
+                        video.srcObject = stream;
+                        video.style.display = 'block';
+                        instruction.style.display = 'none'; // Esconde a instrução
+                        
+                        // Tenta travar a tela na horizontal
+                        if (screen.orientation && screen.orientation.lock) {
+                            screen.orientation.lock('landscape').catch(e => console.log("Orientação não suportada"));
                         }
+                    })
+                    .catch(function (error) {
+                        alert("Erro ao acessar a câmera: " + error.message);
                     });
-                    
-                    // Filter controls
-                    document.getElementById('applyFiltersBtn').addEventListener('click', () => {
-                        this.applyFilters();
-                    });
-                    
-                    document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-                        this.clearFilters();
-                    });
-                    
-                    // Tab switching
-                    document.querySelectorAll('.tab-btn').forEach(btn => {
-                        btn.addEventListener('click', (e) => {
-                            const tabId = e.target.dataset.tab;
-                            this.switchTab(tabId);
-                        });
-                    });
-                    
-                    // Modal
-                    document.getElementById('modalClose').addEventListener('click', () => {
-                        this.closeModal();
-                    });
-                    
-                    // Modal overlay click
-                    document.getElementById('modalOverlay').addEventListener('click', (e) => {
-                        if (e.target === e.currentTarget) {
-                            this.closeModal();
-                        }
-                    });
-                    
-                    // Window resize
-                    window.addEventListener('resize', this.debounce(() => {
-                        this.visualRenderer.handleResize();
-                    }, 250));
-                    
-                    // Selection
-                    document.addEventListener('selectionchange', () => {
-                        this.handleSelectionChange();
-                    });
-                    
-                    // Context menu
-                    document.addEventListener('contextmenu', (e) => {
-                        e.preventDefault();
-                        this.showContextMenu(e);
-                    });
-                    
-                    // Keyboard shortcuts
-                    document.addEventListener('keydown', (e) => {
-                        this.handleKeyboardShortcuts(e);
-                    });
-                    
-                    // Performance monitoring
-                    setInterval(() => {
-                        this.monitorPerformance();
-                    }, 5000);
-                }
-                
-                setupMutationObserver() {
-                    const options = {
-                        childList: true,
-                        subtree: true,
-                        characterData: true,
-                        attributes: true,
-                        attributeOldValue: false,
-                        characterDataOldValue: false
-                    };
-                    
-                    this.domObserver = new MutationObserver((mutations) => {
-                        this.handleDOMMutation(mutations);
-                    });
-                    
-                    // Observe based on config.captureArea
-                    let observeTarget = document.body;
-                    if (this.config.captureArea === 'main') {
-                        observeTarget = document.querySelector('main') || document.body;
-                    } else if (this.config.captureArea === 'input') {
-                        observeTarget = document.getElementById('textInput');
-                    }
-                    
-                    this.domObserver.observe(observeTarget, options);
-                }
-                
-                handleDOMMutation(mutations) {
-                    if (!this.config.autoCapture) return;
-                    
-                    mutations.forEach(mutation => {
-                        if (mutation.type === 'childList') {
-                            mutation.addedNodes.forEach(node => {
-                                if (node.nodeType === Node.TEXT_NODE) {
-                                    const text = node.textContent.trim();
-                                    if (text && text.length > 1) {
-                                        this.captureText(text);
-                                    }
-                                } else if (node.nodeType === Node.ELEMENT_NODE) {
-                                    const text = node.textContent.trim();
-                                    if (text && text.length > 1) {
-                                        this.captureText(text);
-                                    }
-                                }
-                            });
-                        } else if (mutation.type === 'characterData') {
-                            const text = mutation.target.textContent.trim();
-                            if (text && text.length > 1) {
-                                this.debounce(() => {
-                                    this.captureText(text);
-                                }, 500)();
-                            }
-                        }
-                    });
-                }
-                
-                captureText(text) {
-                    if (this.isPaused) return;
-                    
-                    // Extract words from text
-                    const words = this.extractWords(text);
-                    
-                    words.forEach(word => {
-                        if (!this.words.has(word)) {
-                            this.processWord(word);
-                        }
-                    });
-                }
-                
-                extractWords(text) {
-                    // Remove punctuation and split
-                    const cleaned = text.toLowerCase()
-                        .replace(/[^\w\sáéíóúâêîôûãõç]/g, ' ')
-                        .replace(/\s+/g, ' ')
-                        .trim();
-                    
-                    if (!cleaned) return [];
-                    
-                    return cleaned.split(' ').filter(word => 
-                        word.length > 2 && 
-                        !this.isStopWord(word) &&
-                        !/\d/.test(word)
-                    );
-                }
-                
-                isStopWord(word) {
-                    const stopWords = [
-                        'uma', 'para', 'com', 'sem', 'que', 'de', 'do', 'da', 'em', 'na', 
-                        'no', 'aos', 'aos', 'como', 'mais', 'mas', 'sobre', 'ter', 'se', 
-                        'não', 'dos', 'pela', 'pelo', 'suas', 'seus', 'sua', 'seu', 'esta', 
-                        'este', 'estas', 'estes', 'esteve', 'está', 'são', 'somos', 'serei', 
-                        'será', 'seremos', 'serão', 'seriam', 'seria', 'era', 'eras', 'fui', 
-                        'fomos', 'foram', 'sou', 'é', 'são', 'estou', 'está', 'estamos', 
-                        'estão', 'estive', 'esteve', 'estivemos', 'estiveram', 'teria', 
-                        'teriam', 'tive', 'teve', 'tivemos', 'tiveram', 'tendo', 'tendo', 
-                        'tenho', 'tem', 'temos', 'têm', 'tenho', 'teve', 'teve', 'tivemos', 
-                        'tiveram', 'serei', 'será', 'seremos', 'serão', 'seriam', 'seria', 
-                        'era', 'eras', 'fui', 'fomos', 'foram', 'sou', 'é', 'são', 'estou', 
-                        'está', 'estamos', 'estão', 'estive', 'esteve', 'estivemos', 'estiveram', 
-                        'teria', 'teriam', 'tive', 'teve', 'tivemos', 'tiveram', 'tendo', 
-                        'tenho', 'tem', 'temos', 'têm', 'quando', 'onde', 'porque', 'como', 
-                        'se', 'então', 'mas', 'por', 'até', 'depois', 'antes', 'durante', 
-                        'perto', 'longe', 'aqui', 'ali', 'lá', 'quem', 'qual', 'quais', 
-                        'quando', 'onde', 'porque', 'como', 'se', 'então', 'mas', 'por', 
-                        'até', 'depois', 'antes', 'durante', 'perto', 'longe', 'aqui', 'ali', 
-                        'lá', 'aquele', 'aquela', 'aqueles', 'aquelas', 'este', 'esta', 
-                        'estes', 'estas', 'esse', 'essa', 'esses', 'essas', 'aquele', 
-                        'aquela', 'aqueles', 'aquelas', 'me', 'te', 'se', 'nos', 'vos', 
-                        'lhes', 'minha', 'minhas', 'meu', 'meus', 'tua', 'tuas', 'teu', 
-                        'teus', 'sua', 'suas', 'nosso', 'nossos', 'nossa', 'nossas', 'vossa', 
-                        'vossos', 'vossa', 'vossas'
-                    ];
-                    
-                    return !stopWords.includes(word);
-                }
-                
-                processWord(word) {
-                    if (this.isPaused) return;
-                    
-                    // Create word object
-                    const wordData = {
-                        text: word,
-                        timestamp: Date.now(),
-                        confidence: Math.random() * 0.4 + 0.6, // 0.6 - 1.0
-                        state: 'detected',
-                        level: this.determineCaptureLevel(),
-                        grammaticalClass: this.lexicalAnalyzer.getPartOfSpeech(word),
-                        morphologicalStructure: this.morphologyEngine.analyze(word),
-                        semas: [],
-                        sememes: [],
-                        semanticField: [],
-                        etymology: null,
-                        relations: [],
-                        family: null,
-                        variants: [],
-                        context: {},
-                        uncertainty: [],
-                        sources: [],
-                        pendingAnalysis: true
-                    };
-                    
-                    // Start analysis pipeline
-                    this.analyzeWord(wordData);
-                }
-                
-                analyzeWord(wordData) {
-                    this.showLoading(true);
-                    
-                    // Run analysis in parallel
-                    Promise.all([
-                        this.sememeEngine.analyze(wordData),
-                        this.etymologyEngine.analyze(wordData),
-                        this.taxonomyEngine.analyze(wordData),
-                        this.semanticRelationsEngine.analyze(wordData)
-                    ]).then(results => {
-                        // Combine results
-                        const [sememeResult, etymologyResult, taxonomyResult, relationsResult] = results;
-                        
-                        wordData.semas = sememeResult.semas;
-                        wordData.sememes = sememeResult.sememes;
-                        wordData.semanticField = sememeResult.field;
-                        wordData.etymology = etymologyResult;
-                        wordData.relations = relationsResult;
-                        wordData.family = taxonomyResult.family;
-                        wordData.context = taxonomyResult.context;
-                        wordData.uncertainty = sememeResult.uncertainty;
-                        wordData.sources = etymologyResult.sources || [];
-                        wordData.pendingAnalysis = false;
-                        
-                        // Update word object
-                        this.words.set(wordData.text, wordData);
-                        
-                        // Update statistics
-                        this.updateStatistics(wordData);
-                        
-                        // Generate visualization
-                        this.visualRenderer.renderWord(wordData);
-                        
-                        // Update memory preview
-                        this.updateMemoryPreview(wordData);
-                        
-                        // Create connections
-                        this.semanticRelationsEngine.createConnections(wordData);
-                        
-                        this.showLoading(false);
-                        
-                        // Show notification for new word
-                        this.notify(`Novo termo analisado: "${wordData.text}"`, 'success');
-                        
-                    }).catch(error => {
-                        console.error('Analysis error:', error);
-                        this.showLoading(false);
-                        this.notify('Erro na análise do termo', 'error');
-                    });
-                }
-                
-                initializeCoreData() {
-                    // Initialize semantic features database
-                    this.semanticFeatures = {
-                        core: {
-                            '+assento': { name: 'possui assento', category: 'shape', examples: ['cadeira', 'banco'] },
-                            '+suporte_corporal': { name: 'suporte para corpo', category: 'support', examples: ['cadeira', 'mesa'] },
-                            '+coletivo': { name: 'uso coletivo', category: 'usage', examples: ['sofá', 'banco'] },
-                            '+individual': { name: 'uso individual', category: 'usage', examples: ['cadeira', 'banheiro'] },
-                            '+móvel': { name: 'transporte possível', category: 'mobility', examples: ['banheiro', 'cadeira'] },
-                            '+fixo': { name: 'fixo no local', category: 'stability', examples: ['mesa', 'estante'] },
-                            '+objeto': { name: 'entidade material', category: 'ontology', examples: ['cadeira', 'livro'] },
-                            '+ser_vivo': { name: 'ser vivo', category: 'biology', examples: ['homem', 'animal'] },
-                            '+ser_não_vivo': { name: 'ser não vivo', category: 'physics', examples: ['pedra', 'computador'] },
-                            '+transparente': { name: 'permite passagem de luz', category: 'optical', examples: ['vidro', 'água'] },
-                            '+opaco': { name: 'bloqueia passagem de luz', category: 'optical', examples: ['madeira', 'metal'] }
-                        },
-                        
-                        differential: {
-                            '-coletivo': { name: 'não é coletivo', category: 'usage', examples: ['cadeira', 'sofá'] },
-                            '-móvel': { name: 'não é móvel', category: 'mobility', examples: ['estante', 'mesa'] },
-                            '-transparente': { name: 'não é transparente', category: 'optical', examples: ['madeira', 'metal'] }
-                        },
-                        
-                        contextual: {
-                            '+conhecimento': { name: 'pertence ao conhecimento', category: 'cognition', examples: ['empréstimo', 'capital'] },
-                            '+abstrato': { name: 'não tangível', category: 'abstraction', examples: ['amor', 'justiça'] },
-                            '+concreto': { name: 'tangível', category: 'concreteness', examples: ['cadeira', 'computador'] }
-                        }
-                    };
-                    
-                    // Initialize etymology database
-                    this.etymologyDatabase = {
-                        'latim': {
-                            'aqua': { meaning: 'água', form: '*akʷa', certainty: 0.95, cognates: ['português:água', 'espanhol:agua', 'italiano:acqua'] },
-                            'amicus': { meaning: 'amigo', form: '*amīcus', certainty: 0.95, cognates: ['português:amigo', 'espanhol:amigo', 'italiano:amico'] },
-                            'stella': { meaning: 'estrela', form: '*stēlla', certainty: 0.9, cognates: ['português:estrela', 'espanhol:estrella', 'italiano:stella'] },
-                            'radix': { meaning: 'raiz', form: '*rād̥gʰ- ', certainty: 0.95, cognates: ['grego:ριζα', 'inglês:root'] }
-                        },
-                        
-                        'grego': {
-                            'ὕδωρ': { meaning: 'água', form: 'húdōr', certainty: 0.9, cognates: ['latim:aqua', 'inglês:water'] },
-                            'ἀστήρ': { meaning: 'estrela', form: 'astēr', certainty: 0.9, cognates: ['latim:stella', 'inglês:star'] },
-                            'φιλία': { meaning: 'amizade', form: 'philia', certainty: 0.9, cognates: ['latim:amicus', 'português:amizade'] }
-                        },
-                        
-                        'sânscrito': {
-                            'पानी': { meaning: 'água', form: 'pānī', certainty: 0.9, cognates: ['latim:aqua', 'inglês:water'] },
-                            'मित्र': { meaning: 'amigo', form: 'mitra', certainty: 0.9, cognates: ['latim:amicus', 'inglês:friend'] }
-                        },
-                        
-                        'alemão': {
-                            'wasser': { meaning: 'água', form: '*watar', certainty: 0.95, cognates: ['latim:aqua', 'inglês:water'] },
-                            'herz': { meaning: 'coração', form: *hertz, certainty: 0.9, cognates: ['português:coração', 'inglês:heart'] }
-                        },
-                        
-                        'inglês': {
-                            'water': { meaning: 'água', form: *watar, certainty: 0.9, cognates: ['latim:aqua', 'grego:ὕδωρ'] },
-                            'star': { meaning: 'estrela', form: *ster-, certainty: 0.85, cognates: ['latim:stella', 'grego:ἀστήρ'] }
-                        },
-                        
-                        'português': {
-                            'água': { meaning: 'água', form: *ákua, certainty: 0.95, cognates: ['latim:aqua', 'inglês:water'] },
-                            'amigo': { meaning: 'amigo', form: *amigo, certainty: 0.95, cognates: ['latim:amicus', 'espanhol:amigo'] },
-                            'estrela': { meaning: 'estrela', form: *estrela, certainty: 0.9, cognates: ['latim:stella', 'espanhol:estrella'] },
-                            'cadeira': { meaning: 'cadeira', form: *sede, certainty: 0.85, cognates: ['latim:cathedra', 'inglês:chair'] },
-                            'coração': { meaning: 'coração', form: *cor', certainty: 0.9, cognates: ['latim:cor', 'inglês:heart'] }
-                        }
-                    };
-                    
-                    // Initialize semantic relations
-                    this.semanticRelationDatabase = {
-                        'sinonímia': {
-                            'água': ['liquid', 'fluid', 'wetness', 'river'],
-                            'cadeira': ['chair', 'seat', 'bench']
-                        },
-                        
-                        'hiponímia': {
-                            'animal': ['cachorro', 'gato', 'pássaro'],
-                            'planta': ['árvore', 'arbusto', 'erva']
-                        },
-                        
-                        'hyperonímia': {
-                            'cachorro': ['animal', 'mammal', 'pet'],
-                            'árvore': ['planta', 'vegetal', 'flora']
-                        }
-                    };
-                    
-                    // Initialize morphological patterns
-                    this.morphologicalPatterns = {
-                        'português': {
-                            'ações': { suffix: '-ção', meaning: 'substantivação de ação', examples: ['ação', 'criação'] },
-                            'agentes': { suffix: '-dor', meaning: 'agente de ação', examples: ['ator', 'criador'] },
-                            'instrumentos': { suffix: '-mento', meaning: 'instrumento ou resultado', examples: ['apontamento', 'desenvolvimento'] },
-                            'femininos': { suffix: '-a', meaning: 'forma feminina', examples: ['professora', 'cantora'] }
-                        }
-                    };
-                }
-                
-                initializeStatistics() {
-                    this.stats = {
-                        totalWords: 0,
-                        lexicalUnits: new Set(),
-                        semasIdentified: new Set(),
-                        sememesReconstructed: new Set(),
-                        rootsIdentified: new Set(),
-                        relationsEstablished: 0,
-                        etymologyInvestigated: 0,
-                        classificationsPending: 0,
-                        lowConfidenceResults: 0,
-                        byDay: {}
-                    };
-                    
-                    this.updateUI();
-                }
-                
-                updateStatistics(wordData) {
-                    this.stats.totalWords++;
-                    this.stats.lexicalUnits.add(wordData.text);
-                    wordData.semas.forEach(sema => {
-                        this.stats.semasIdentified.add(sema);
-                    });
-                    wordData.sememes.forEach(sememe => {
-                        this.stats.sememesReconstructed.add(wordData.text + ':' + sememe);
-                    });
-                    
-                    // Try to identify root
-                    const root = this.morphologyEngine.getRoot(wordData.text, wordData.morphologicalStructure);
-                    if (root) {
-                        this.stats.rootsIdentified.add(root);
-                    }
-                    
-                    // Count relations
-                    this.stats.relationsEstablished += wordData.relations.length;
-                    
-                    // Count etymology
-                    if (wordData.etymology) {
-                        this.stats.etymologyInvestigated++;
-                    }
-                    
-                    // Check for pending classifications
-                    if (wordData.pendingAnalysis) {
-                        this.stats.classificationsPending++;
-                    }
-                    
-                    // Check for low confidence
-                    if (wordData.confidence < 0.7) {
-                        this.stats.lowConfidenceResults++;
-                    }
-                    
-                    // Update daily stats
-                    const today = new Date().toDateString();
-                    if (!this.stats.byDay[today]) {
-                        this.stats.byDay[today] = { words: 0, units: 0, semas: 0 };
-                    }
-                    this.stats.byDay[today].words++;
-                    
-                    this.updateUI();
-                }
-                
-                updateUI() {
-                    document.getElementById('totalWords').textContent = this.stats.totalWords;
-                    document.getElementById('lexicalUnits').textContent = this.stats.lexicalUnits.size;
-                    document.getElementById('semasCount').textContent = this.stats.semasIdentified.size;
-                    document.getElementById('sememesCount').textContent = this.stats.sememesReconstructed.size;
-                    document.getElementById('rootsCount').textContent = this.stats.rootsIdentified.size;
-                    document.getElementById('relationsCount').textContent = this.stats.relationsEstablished;
-                    
-                    // Observatory
-                    document.getElementById('obs-total-words').textContent = this.stats.totalWords;
-                    document.getElementById('obs-lexical-units').textContent = this.stats.lexicalUnits.size;
-                    document.getElementById('obs-semas').textContent = this.stats.semasIdentified.size;
-                    document.getElementById('obs-sememes').textContent = this.stats.sememesReconstructed.size;
-                    document.getElementById('obs-roots').textContent = this.stats.rootsIdentified.size;
-                    document.getElementById('obs-relations').textContent = this.stats.relationsEstablished;
-                    document.getElementById('obs-etymology').textContent = this.stats.etymologyInvestigated;
-                    document.getElementById('obs-pending').textContent = this.stats.classificationsPending;
-                }
-                
-                analyzeText() {
-                    const text = document.getElementById('textInput').value.trim();
-                    if (!text) return;
-                    
-                    this.captureText(text);
-                    document.getElementById('textInput').value = '';
-                    
-                    this.notify('Texto analisado com sucesso', 'success');
-                }
-                
-                showManualInput() {
-                    const word = prompt('Digite uma palavra para análise manual:');
-                    if (word) {
-                        this.processWord(word.toLowerCase());
-                        this.notify(`Palavra manual adicionada: "${word}"`, 'success');
-                    }
-                }
-                
-                determineCaptureLevel() {
-                    const levels = ['I', 'II', 'III'];
-                    return levels[Math.floor(Math.random() * levels.length)];
-                }
-                
-                switchTab(tabId) {
-                    // Hide all tabs
-                    document.querySelectorAll('.tab-content').forEach(tab => {
-                        tab.classList.remove('active');
-                    });
-                    
-                    // Remove active class from all buttons
-                    document.querySelectorAll('.tab-btn').forEach(btn => {
-                        btn.classList.remove('active');
-                    });
-                    
-                    // Show selected tab
-                    document.getElementById(tabId).classList.add('active');
-                    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-                    
-                    // Re-render visualization for some tabs
-                    if (tabId === 'microscope') {
-                        this.renderWordDetails();
-                    } else if (tabId === 'field') {
-                        this.visualRenderer.renderField();
-                    } else if (tabId === 'taxonomy') {
-                        this.renderTaxonomy();
-                    }
-                }
-                
-                renderWordDetails() {
-                    if (this.selectedWord) {
-                        const wordData = this.words.get(this.selectedWord);
-                        if (wordData) {
-                            this.wordDetails.innerHTML = this.createWordDetailHTML(wordData);
-                        }
-                    }
-                }
-                
-                createWordDetailHTML(wordData) {
-                    const semasHTML = wordData.semas.map(sema => 
-                        `<span class="sema-tag">${sema}</span>`
-                    ).join('');
-                    
-                    const uncertaintyHTML = wordData.uncertainty.map(u => 
-                        `<div style="color: var(--accent-amber); font-size: 0.8rem; margin-top: 5px;">
-                            ${u.type}: ${u.description}
-                        </div>`
-                    ).join('');
-                    
-                    let etymologyHTML = '';
-                    if (wordData.etymology) {
-                        etymologyHTML = `
-                            <div class="section-title">Etimologia</div>
-                            <div class="etymology-content">
-                                <div class="etymology-entry">
-                                    <span class="etymology-from">${wordData.etymology.from}</span> → 
-                                    <span class="etymology-to">${wordData.etymology.to}</span>
-                                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">
-                                        Significado: ${wordData.etymology.meaning}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    
-                    return `
-                        <div class="word-detail">
-                            <div class="detail-header">
-                                <div class="detail-word">${wordData.text}</div>
-                                <div class="detail-confidence">
-                                    <span>Confiança: ${Math.round(wordData.confidence * 100)}%</span>
-                                    <div class="confidence-bar">
-                                        <div class="confidence-fill" style="width: ${wordData.confidence * 100}%"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="detail-grid">
-                                <div class="detail-section">
-                                    <div class="section-title">Nível ${wordData.level}</div>
-                                    <div>${wordData.morphologicalStructure}</div>
-                                </div>
-                                <div class="detail-section">
-                                    <div class="section-title">Classe Gramatical</div>
-                                    <div>${wordData.grammaticalClass}</div>
-                                </div>
-                                <div class="detail-section">
-                                    <div class="section-title">Semas Nucleares</div>
-                                    <div class="semas-list">
-                                        ${semasHTML}
-                                    </div>
-                                </div>
-                                <div class="detail-section">
-                                    <div class="section-title">Semema Reconstruído</div>
-                                    <div>${wordData.sememes.join(', ') || 'Em análise'}</div>
-                                </div>
-                                ${uncertaintyHTML ? `
-                                <div class="detail-section" style="grid-column: 1 / -1;">
-                                    <div class="section-title">Incertezas e Hipóteses</div>
-                                    ${uncertaintyHTML}
-                                </div>
-                                ` : ''}
-                            </div>
-                            ${etymologyHTML}
+            } else {
+                alert("Seu navegador não suporta acesso à câmera.");
+            }
+        }
+
+        // 2. Dados Epistemológicos (Baseado no SEMAS Scanner e sua conversa)
+        const database = {
+            'node-1': {
+                title: "NÓ 1: ETIMOLOGIA CRUZADA",
+                semantica: `
+                    <div class="data-grid">
+                        <div class="data-box">
+                            <div class="data-label">PALAVRA 1</div>
+                            <div class="data-value">MACACO</div>
                         </div>
-                    `;
-                }
-                
-                renderTaxonomy() {
-                    // Generate taxonomy tree based on semantic fields
-                    const fieldGroups = {};
-                    
-                    this.words.forEach(wordData => {
-                        wordData.semanticField.forEach(field => {
-                            if (!fieldGroups[field]) {
-                                fieldGroups[field] = [];
-                            }
-                            fieldGroups[field].push(wordData);
-                        });
-                    });
-                    
-                    let html = '<div class="taxonomy-tree">';
-                    
-                    Object.entries(fieldGroups).forEach(([field, words]) => {
-                        html += `
-                            <div class="taxonomy-node">
-                                <div class="node-header">
-                                    <span class="node-icon">▤</span>
-                                    <span class="node-label">${field.toUpperCase()}</span>
-                                    <span class="node-count">${words.length}</span>
-                                </div>
-                                <div class="node-children">
-                        `;
-                        
-                        words.slice(0, 5).forEach(wordData => {
-                            html += `
-                                <div class="taxonomy-node">
-                                    <div class="node-header">
-                                        <span class="node-icon">▶</span>
-                                        <span class="node-label">${wordData.text}</span>
-                                        <span class="node-count">${wordData.semas.length}</span>
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        
-                        if (words.length > 5) {
-                            html += `
-                                <div class="taxonomy-node">
-                                    <div class="node-header">
-                                        <span class="node-icon">+</span>
-                                        <span class="node-label">+${words.length - 5} termos...</span>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        
-                        html += '</div></div>';
-                    });
-                    
-                    html += '</div>';
-                    document.querySelector('#taxonomy .taxonomy-tree').innerHTML = html;
-                }
-                
-                updateMemoryPreview(wordData) {
-                    const preview = document.getElementById('memoryPreview');
-                    const timestamp = new Date().toLocaleTimeString('pt-BR');
-                    
-                    const entry = document.createElement('div');
-                    entry.className = 'memory-entry';
-                    entry.innerHTML = `
-                        <div class="memory-header">
-                            <span class="memory-word">${wordData.text}</span>
-                            <span class="memory-timestamp">${timestamp}</span>
+                        <div class="data-box">
+                            <div class="data-label">ORIGEM</div>
+                            <div class="data-value">Banto (makako)</div>
                         </div>
-                        <div style="font-size: 0.85rem; color: var(--text-secondary);">
-                            <div style="margin-bottom: 5px;">
-                                <strong>Semas:</strong> 
-                                ${wordData.semas.map(sema => 
-                                    `<span class="sema-tag">${sema}</span>`
-                                ).join(' ')}
-                            </div>
-                            <div style="margin-bottom: 5px;">
-                                <strong>Semema:</strong> ${wordData.sememes.join(', ') || 'Em análise'}
-                            </div>
-                            ${wordData.etymology ? `
-                            <div style="margin-bottom: 5px;">
-                                <strong>Etimologia:</strong> ${wordData.etymology.from} → ${wordData.etymology.to}
-                            </div>
-                            ` : ''}
+                    </div>
+                    <div class="data-grid">
+                        <div class="data-box">
+                            <div class="data-label">PALAVRA 2</div>
+                            <div class="data-value">CARIMBO</div>
                         </div>
-                    `;
-                    
-                    preview.insertBefore(entry, preview.firstChild);
-                    
-                    // Keep only last 20 entries
-                    const entries = preview.querySelectorAll('.memory-entry');
-                    if (entries.length > 20) {
-                        entries[entries.length - 1].remove();
-                    }
-                }
-                
-                renderWord(wordData) {
-                    // Animate word appearance
-                    if (this.config.animateNewWords && wordData.state === 'detected') {
-                        this.animateWordEntry(wordData);
-                    }
-                    
-                    // Store word reference
-                    this.words.set(wordData.text, wordData);
-                    
-                    // Update statistics
-                    this.updateStatistics(wordData);
-                    
-                    // Update field visualization
-                    this.visualRenderer.renderField();
-                }
-                
-                animateWordEntry(wordData) {
-                    const captureFlow = document.getElementById('captureFlow');
-                    const wordElement = document.createElement('div');
-                    wordElement.className = `word-unit state-${wordData.state}`;
-                    wordElement.innerHTML = `
-                        <div class="word-content">
-                            <div class="word-text">${wordData.text}</div>
-                            <div class="word-confidence">${Math.round(wordData.confidence * 100)}%</div>
-                            <div class="word-state-indicator ${!wordData.confidence ? 'uncertain' : ''}"></div>
+                        <div class="data-box">
+                            <div class="data-label">ORIGEM</div>
+                            <div class="data-value">Quimbundo (ka'rima)</div>
                         </div>
-                    `;
-                    
-                    // Position randomly but within reasonable bounds
-                    const x = Math.random() * (captureFlow.clientWidth - 100);
-                    const y = Math.random() * (captureFlow.clientHeight - 50);
-                    
-                    wordElement.style.left = `${x}px`;
-                    wordElement.style.top = `${y}px`;
-                    
-                    captureFlow.appendChild(wordElement);
-                    
-                    // Animate through states
-                    setTimeout(() => {
-                        wordElement.classList.add('state-isolated');
-                    }, 1000);
-                    
-                    setTimeout(() => {
-                        wordElement.classList.add('state-decomposed');
-                    }, 2000);
-                    
-                    setTimeout(() => {
-                        wordElement.classList.add('state-classified');
-                    }, 3000);
-                    
-                    setTimeout(() => {
-                        wordElement.classList.add('state-related');
-                        this.changeWordState(wordData, 'related');
-                    }, 4000);
-                    
-                    // Move to archived after some time
-                    setTimeout(() => {
-                        this.changeWordState(wordData, 'archived');
-                        setTimeout(() => {
-                            wordElement.classList.add('state-archived');
-                        }, 100);
-                    }, 8000);
-                    
-                    // Update word details if this is the first word
-                    if (this.wordCount === 0) {
-                        this.selectedWord = wordData.text;
-                        this.renderWordDetails();
-                    }
-                    
-                    this.wordCount++;
-                }
-                
-                changeWordState(wordData, newState) {
-                    wordData.state = newState;
-                    this.words.set(wordData.text, wordData);
-                    
-                    // Update memory
-                    this.updateMemoryPreview(wordData);
-                    
-                    // Update field visualization
-                    this.visualRenderer.renderField();
-                }
-                
-                createConnections(wordData) {
-                    // Create connections with similar words
-                    const connections = [];
-                    
-                    this.words.forEach((otherWord, text) => {
-                        if (text === wordData.text) return;
-                        
-                        const similarity = this.calculateSemanticSimilarity(wordData, otherWord);
-                        
-                        if (similarity > 0.3) {
-                            const relation = {
-                                word1: wordData.text,
-                                word2: text,
-                                type: this.determineRelationType(wordData, otherWord, similarity),
-                                strength: similarity,
-                                confidence: Math.round(similarity * 100)
-                            };
-                            
-                            connections.push(relation);
-                        }
-                    });
-                    
-                    wordData.relations = connections;
-                    this.words.set(wordData.text, wordData);
-                    this.relationsCount += connections.length;
-                    this.updateUI();
-                }
-                
-                calculateSemanticSimilarity(word1, word2) {
-                    let score = 0;
-                    
-                    // Compare semas
-                    const sharedSemas = word1.semas.filter(sema => word2.semas.includes(sema)).length;
-                    const totalSemas = Math.max(word1.semas.length, word2.semas.length);
-                    score += (sharedSemas / totalSemas) * 0.5;
-                    
-                    // Check semantic field overlap
-                    const sharedFields = word1.semanticField.filter(field => 
-                        word2.semanticField.includes(field)
-                    ).length;
-                    const totalFields = Math.max(word1.semanticField.length, word2.semanticField.length);
-                    score += (sharedFields / totalFields) * 0.3;
-                    
-                    // Check if they share root (morphological)
-                    const root1 = this.morphologyEngine.getRoot(word1.text, word1.morphologicalStructure);
-                    const root2 = this.morphologyEngine.getRoot(word2.text, word2.morphologicalStructure);
-                    if (root1 && root2 && root1 === root2) {
-                        score += 0.2;
-                    }
-                    
-                    return score;
-                }
-                
-                determineRelationType(word1, word2, similarity) {
-                    // Simple heuristic for relation type
-                    if (similarity > 0.7) {
-                        return 'sinonímia';
-                    } else if (similarity > 0.5) {
-                        return 'hiperonímia';
-                    } else if (similarity > 0.3) {
-                        return 'meronímia';
-                    } else {
-                        return 'proximidade_semântica';
-                    }
-                }
-                
-                generateDemoWords() {
-                    const demoWords = [
-                        'observar', 'sombra', 'água', 'cadeira', 'coração', 
-                        'amigo', 'estrela', 'rio', 'floresta', 'silêncio',
-                        'velocidade', 'sentimento', 'memória', 'sonho', 'realidade'
-                    ];
-                    
-                    demoWords.forEach((word, index) => {
-                        setTimeout(() => {
-                            this.processWord(word);
-                        }, index * 1000);
-                    });
-                }
-                
-                // Control methods
-                togglePause() {
-                    this.isPaused = !this.isPaused;
-                    const btn = document.getElementById('pauseBtn');
-                    if (this.isPaused) {
-                        btn.textContent = 'CONTINUAR';
-                        btn.classList.add('active');
-                        document.getElementById('captureStatus').textContent = 'CAPTURA PAUSADA';
-                    } else {
-                        btn.textContent = 'PAUSAR';
-                        btn.classList.remove('active');
-                        document.getElementById('captureStatus').textContent = 'CAPTURA ATIVA';
-                    }
-                    this.notify(this.isPaused ? 'Captura pausada' : 'Captura retomada', this.isPaused ? 'warning' : 'success');
-                }
-                
-                toggleSpeed() {
-                    this.config.speed = this.config.speed === 1 ? 2 : 1;
-                    const btn = document.getElementById('speedBtn');
-                    btn.textContent = `VEL. ${this.config.speed}x`;
-                    this.notify(`Velocidade alterada para ${this.config.speed}x`, 'success');
-                }
-                
-                clearFlow() {
-                    document.getElementById('captureFlow').innerHTML = '';
-                    this.words.clear();
-                    this.wordCount = 0;
-                    this.lexicalUnitsCount = 0;
-                    this.semasCount = 0;
-                    this.sememesCount = 0;
-                    this.rootsCount = 0;
-                    this.relationsCount = 0;
-                    this.etymologyCount = 0;
-                    this.pendingCount = 0;
-                    
-                    // Reset stats
-                    this.stats = {
-                        totalWords: 0,
-                        lexicalUnits: new Set(),
-                        semasIdentified: new Set(),
-                        sememesReconstructed: new Set(),
-                        rootsIdentified: new Set(),
-                        relationsEstablished: 0,
-                        etymologyInvestigated: 0,
-                        classificationsPending: 0,
-                        lowConfidenceResults: 0,
-                        byDay: {}
-                    };
-                    
-                    this.updateUI();
-                    this.notify('Fluxo de captura limpo', 'success');
-                }
-                
-                exportData() {
-                    const data = {
-                        timestamp: new Date().toISOString(),
-                        config: this.config,
-                        statistics: this.stats,
-                        words: Array.from(this.words.values()),
-                        relations: this.relations,
-                        exportVersion: '1.0'
-                    };
-                    
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `semas-scanner-data-${Date.now()}.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    
-                    this.notify('Dados exportados com sucesso', 'success');
-                }
-                
-                // Utility methods
-                debounce(func, wait) {
-                    let timeout;
-                    return function executedFunction(...args) {
-                        const later = () => {
-                            clearTimeout(timeout);
-                            func(...args);
-                        };
-                        clearTimeout(timeout);
-                        timeout = setTimeout(later, wait);
-                    };
-                }
-                
-                showLoading(show) {
-                    const loader = document.getElementById('loadingIndicator');
-                    if (show) {
-                        loader.style.display = 'flex';
-                    } else {
-                        loader.style.display = 'none';
-                    }
-                }
-                
-                notify(message, type = 'success') {
-                    const container = document.getElementById('notificationContainer');
-                    const notification = document.createElement('div');
-                    notification.className = `notification ${type}`;
-                    notification.innerHTML = `
-                        <div class="notification-icon">
-                            ${type === 'success' ? '✓' : type === 'warning' ? '⚠' : '✗'}
+                    </div>
+                    <p>Semas compartilhados:</p>
+                    <span class="sema-tag">[+África]</span>
+                    <span class="sema-tag">[+Colisão Cultural]</span>
+                    <span class="sema-tag">[+Criação Lúdica]</span>
+                `,
+                filologia: `
+                    <p><strong>Análise Morfológica:</strong></p>
+                    <p>O termo "Carimbo" evoluiu de <em>kirimbu</em> (marca a ferro) para o instrumento de borracha. "Macaco" designava "besta selvagem".</p>
+                    <p><strong>Confiança:</strong> 98%</p>
+                    <div style="height: 5px; background: #333; margin-top: 5px;">
+                        <div style="height: 100%; width: 98%; background: var(--accent-green);"></div>
+                    </div>
+                `,
+                interacao: `
+                    <p><strong>Estado do Nó:</strong> Classificado.</p>
+                    <p>Este nó ancora a base do seu jogo. A etimologia serve como o "chão" físico do caderno.</p>
+                `
+            },
+            'node-2': {
+                title: "NÓ 2: TECNO FEITIÇO",
+                semantica: `
+                    <div class="data-grid">
+                        <div class="data-box">
+                            <div class="data-label">AGENTE 1</div>
+                            <div class="data-value">FERRO DE SOLDA</div>
                         </div>
-                        <div>${message}</div>
-                    `;
-                    
-                    container.appendChild(notification);
-                    
-                    setTimeout(() => {
-                        notification.style.opacity = '0';
-                        setTimeout(() => {
-                            notification.remove();
-                        }, 300);
-                    }, 3000);
-                }
-                
-                handleSelectionChange() {
-                    const selection = window.getSelection();
-                    if (selection && selection.toString().length > 0) {
-                        this.highlightSelected();
-                    }
-                }
-                
-                highlightSelected() {
-                    const selection = window.getSelection();
-                    const range = selection.getRangeAt(0);
-                    const text = range.toString().toLowerCase();
-                    
-                    if (text.length > 2) {
-                        this.processWord(text);
-                    }
-                }
-                
-                showContextMenu(e) {
-                    e.preventDefault();
-                    this.showTooltip(e.clientX, e.clientY, 'Menu de contexto - Clique com botão direito para mais opções');
-                }
-                
-                showTooltip(x, y, text) {
-                    const tooltip = document.getElementById('tooltip');
-                    tooltip.textContent = text;
-                    tooltip.style.left = `${x}px`;
-                    tooltip.style.top = `${y}px`;
-                    tooltip.classList.add('show');
-                    
-                    setTimeout(() => {
-                        tooltip.classList.remove('show');
-                    }, 2000);
-                }
-                
-                handleKeyboardShortcuts(e) {
-                    switch (e.key.toLowerCase()) {
-                        case 'p':
-                            if (e.ctrlKey) {
-                                e.preventDefault();
-                                this.togglePause();
-                            }
-                            break;
-                        case 'k':
-                            if (e.ctrlKey) {
-                                e.preventDefault();
-                                this.showManualInput();
-                            }
-                            break;
-                        case 'f':
-                            if (e.ctrlKey) {
-                                e.preventDefault();
-                                document.getElementById('textInput').focus();
-                            }
-                            break;
-                        case 'e':
-                            if (e.ctrlKey) {
-                                e.preventDefault();
-                                this.exportData();
-                            }
-                            break;
-                    }
-                }
-                
-                monitorPerformance() {
-                    if (this.words.size > 0) {
-                        const avgConfidence = Array.from(this.words.values())
-                            .reduce((sum, word) => sum + word.confidence, 0) / this.words.size;
-                        
-                        const processingTime = avgConfidence > 0.8 ? 'Ótimo' : 
-                                             avgConfidence > 0.6 ? 'Bom' : 'Atenção';
-                        
-                        console.log(`Performance: ${processingTime}, ${this.words.size} palavras analisadas`);
-                    }
-                }
-                
-                closeModal() {
-                    document.getElementById('modalOverlay').classList.remove('active');
-                }
-                
-                applyFilters() {
-                    const grammatical = document.getElementById('filterGrammatical').value;
-                    const semantic = document.getElementById('filterSemantic').value;
-                    const level = document.getElementById('filterLevel').value;
-                    
-                    this.activeFilters = {
-                        grammatical: grammatical || null,
-                        semantic: semantic || null,
-                        level: level || null
-                    };
-                    
-                    this.updateMemoryPreview({text: 'filtros', semas: []});
-                    this.notify('Filtros aplicados', 'success');
-                }
-                
-                clearFilters() {
-                    document.getElementById('filterGrammatical').value = '';
-                    document.getElementById('filterSemantic').value = '';
-                    document.getElementById('filterLevel').value = '';
-                    
-                    this.activeFilters = {};
-                    this.notify('Filtros limpos', 'success');
-                }
-                
-                loadSavedData() {
-                    const saved = localStorage.getItem('semas-scanner-data');
-                    if (saved) {
-                        try {
-                            const data = JSON.parse(saved);
-                            this.words = new Map(data.words.map(w => [w.text, w]));
-                            this.notify('Dados carregados do armazenamento local', 'success');
-                        } catch (e) {
-                            console.error('Error loading saved data:', e);
-                        }
-                    }
-                }
-                
-                saveData() {
-                    const data = {
-                        words: Array.from(this.words.values()),
-                        timestamp: new Date().toISOString()
-                    };
-                    localStorage.setItem('semas-scanner-data', JSON.stringify(data));
-                }
-                
-                // Additional helper methods
-                getWordByText(text) {
-                    return this.words.get(text.toLowerCase()) || null;
-                }
-                
-                getRelatedWords(word) {
-                    const wordData = this.getWordByText(word);
-                    if (!wordData) return [];
-                    
-                    return this.words.filter(([text, data]) => 
-                        data.relations.some(rel => rel.word1 === wordData.text || rel.word2 === wordData.text)
-                    ).map(([text, data]) => text);
-                }
-                
-                getSemanticField(field) {
-                    return Array.from(this.words.values()).filter(wordData => 
-                        wordData.semanticField.includes(field)
-                    );
-                }
+                        <div class="data-box">
+                            <div class="data-label">AGENTE 2</div>
+                            <div class="data-value">BOLDO QUEIMADO</div>
+                        </div>
+                    </div>
+                    <p>Reação Sinérgica:</p>
+                    <span class="sema-tag warning">[+Fumaça Tóxica]</span>
+                    <span class="sema-tag warning">[+Modulação Corpórea]</span>
+                    <span class="sema-tag">[+Interação Enativa]</span>
+                `,
+                filologia: `
+                    <p><strong>Análise do Artefato:</strong></p>
+                    <p>O ferro de solda (tecnologia) agiu sobre a matéria orgânica (boldo). O resultado não foi uma solda, mas uma emissão química que alterou o observador (enjoo).</p>
+                    <p><strong>Falha Sistêmica:</strong> O feitiço afetou o feiticeiro.</p>
+                `,
+                interacao: `
+                    <p><strong>Estado do Nó:</strong> Instável / Tóxico.</p>
+                    <p>Este nó registra a intervenção do mundo real no seu corpo. A imagem do ferro desligado no chão é a prova física dessa interação.</p>
+                `
+            },
+            'node-3': {
+                title: "NÓ 3: PROMPT REVERSO",
+                semantica: `
+                    <div class="data-grid">
+                        <div class="data-box">
+                            <div class="data-label">CONCEITO 1</div>
+                            <div class="data-value">CRISTALIZAÇÃO</div>
+                        </div>
+                        <div class="data-box">
+                            <div class="data-label">CONCEITO 2</div>
+                            <div class="data-value">MODULAÇÃO</div>
+                        </div>
+                    </div>
+                    <p>Camadas Epistemológicas:</p>
+                    <span class="sema-tag">[+Observador em Outro Ângulo]</span>
+                    <span class="sema-tag">[+Ferramenta Curadora]</span>
+                `,
+                filologia: `
+                    <p><strong>Análise Filosófica:</strong></p>
+                    <p>Você identificou que as IAs são "cristalizadas" de forma errada por outros humanos. A sua correção vem através da narração e da observação de um ângulo que a ferramenta não vê.</p>
+                `,
+                interacao: `
+                    <p><strong>Estado do Nó:</strong> Em Narrativa.</p>
+                    <p>Este é o nó mais abstrato. Ele representa a sua própria voz guiando a interface. O código é apenas o meio; você é o narrador.</p>
+                `
             }
+        };
+
+        // 3. Funções de Controle do Painel
+        function openScanner(nodeId) {
+            const panel = document.getElementById('scanner-panel');
+            const data = database[nodeId];
+
+            // Atualiza o título
+            document.getElementById('panel-title').textContent = data.title;
+
+            // Preenche as abas
+            document.getElementById('tab-semantica').innerHTML = data.semantica;
+            document.getElementById('tab-filologia').innerHTML = data.filologia;
+            document.getElementById('tab-interacao').innerHTML = data.interacao;
+
+            // Reseta as abas para a primeira
+            switchTab('tab-semantica');
+
+            // Mostra o painel
+            panel.style.display = 'flex';
             
-            // Capture Engine
-            class CaptureEngine {
-                constructor(semasScanner) {
-                    this.scanner = semasScanner;
-                    this.mutationObserver = null;
-                    this.textAreas = [];
-                }
-                
-                startCapture(element) {
-                    this.textAreas.push(element);
-                    this.setupObserver(element);
-                }
-                
-                setupObserver(element) {
-                    if (this.mutationObserver) {
-                        this.mutationObserver.disconnect();
-                    }
-                    
-                    this.mutationObserver = new MutationObserver((mutations) => {
-                        mutations.forEach(mutation => {
-                            if (mutation.type === 'characterData') {
-                                const text = mutation.target.textContent;
-                                this.scanner.captureText(text);
-                            }
-                        });
-                    });
-                    
-                    this.mutationObserver.observe(element, {
-                        childList: true,
-                        characterData: true,
-                        subtree: true
-                    });
-                }
-                
-                stopCapture(element) {
-                    if (this.mutationObserver) {
-                        this.mutationObserver.disconnect();
-                    }
-                    
-                    const index = this.textAreas.indexOf(element);
-                    if (index > -1) {
-                        this.textAreas.splice(index, 1);
-                    }
-                }
-                
-                analyzeText(text) {
-                    return this.scanner.extractWords(text);
-                }
-            }
+            // Efeito de piscar o nó selecionado
+            const node = document.getElementById(nodeId);
+            node.style.background = 'var(--accent-cyan)';
+            setTimeout(() => node.style.background = 'var(--accent-red)', 300);
+        }
+
+        function closeScanner() {
+            document.getElementById('scanner-panel').style.display = 'none';
+        }
+
+        function switchTab(tabId) {
+            // Remove active de todas as abas e conteúdos
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            // Adiciona active na aba clicada
+            // Encontra o botão da aba baseado no conteúdo
+            const content = document.getElementById(tabId);
+            const tabIndex = Array.from(content.parentNode.children).indexOf(content);
+            document.querySelectorAll('.tab')[tabIndex].classList.add('active');
             
-            // Lexical Analyzer
-            class LexicalAnalyzer {
-                constructor(semasScanner) {
-                    this.scanner = semasScanner;
-                    
-                    // Enhanced part-of-speech patterns
-                    this.posPatterns = {
-                        'NOUN': [
-                            '^[a-zA-Z]{3,}$', // Simple noun pattern
-                            '(?<=i)$', '(?<=a)$', '(?<=o)$', '(?<=e)$', '(?<=as)$', '(?<=os)$'
-                        ],
-                        'VERB': [
-                            'ar$', 'er$', 'ir$', 'ando$', 'endo$', 'indo$'
-                        ],
-                        'ADJ': [
-                            'ico$', 'oso$', 'ável$', 'ível$', 'o$', 'a$', 'os$', 'as$'
-                        ],
-                        'ADV': [
-                            'mente$', 'mente$', 'mente$', 'mente$'
-                        ]
-                    };
-                }
-                
-                getPartOfSpeech(word) {
-                    const lowerWord = word.toLowerCase();
-                    
-                    // Simple heuristic-based POS tagging
-                    if (lowerWord.endsWith('ção') || lowerWord.endsWith('mento') || 
-                        lowerWord.endsWith('ção') || lowerWord.endsWith('ista')) {
-                        return 'NOUN';
-                    }
-                    
-                    if (lowerWord.endsWith('ar') || lowerWord.endsWith('er') || 
-                        lowerWord.endsWith('ir') || lowerWord.endsWith('ando') || 
-                        lowerWord.endsWith('endo') || lowerWord.endsWith('indo')) {
-                        return 'VERB';
-                    }
-                    
-                    if (lowerWord.endsWith('ico') || lowerWord.endsWith('oso') || 
-                        lowerWord.endsWith('ável') || lowerWord.endsWith('ível') || 
-                        /^[aeiou]/i.test(lowerWord) && lowerWord.length < 6) {
-                        return 'ADJ';
-                    }
-                    
-                    if (lowerWord.endsWith('mente')) {
-                        return 'ADV';
-                    }
-                    
-                    // Default to noun for single words
-                    return 'NOUN';
-                }
-                
-                extractWordFeatures(word) {
-                    return {
-                        length: word.length,
-                        capitalLetters: word.match(/[A-Z]/g) || [],
-                        digitCount: word.match(/\d/g) || [],
-                        hasHyphen: word.includes('-'),
-                        phoneticPattern: this.analyzePhonetics(word)
-                    };
-                }
-                
-                analyzePhonetics(word) {
-                    // Simple phonetic analysis
-                    const vowels = word.match(/[aeiouáéíóúâêîôûãõ]/gi) || [];
-                    const consonants = word.match(/[^aeiouáéíóúâêîôûãõ\s]/gi) || [];
-                    
-                    return {
-                        vowelCount: vowels.length,
-                        consonantCount: consonants.length,
-                        syllableCount: this.estimateSyllables(word)
-                    };
-                }
-                
-                estimateSyllables(word) {
-                    // Rough syllable estimation
-                    const vowels = word.match(/[aeiouáéíóúâêîôûãõ]/gi) || [];
-                    const diphthongs = word.match(/[ãõâêîôû]/gi) || [];
-                    
-                    return Math.max(1, vowels.length - diphthongs.length + 1);
-                }
-            }
-            
-            // Morphology Engine
-            class MorphologyEngine {
-                constructor(semasScanner) {
-                    this.scanner = semasScanner;
-                    this.morphologicalPatterns = {
-                        'português': {
-                            'ações': { suffix: '-ção', type: 'nominalization', meaning: 'substantivo de ação' },
-                            'verbos': { suffix: 'ar/er/ir', type: 'verb conjugation', meaning: 'verbo do presente' },
-                            'adjetivos': { suffix: '-o/-a', type: 'agreement', meaning: 'gênero e número' },
-                            'derivados': { suffix: '-eiro', type: 'agent', meaning: 'aquele que faz ou possui' },
-                            'compostos': { suffix: '-', type: 'composition', meaning: 'combinação de radicais' }
-                        },
-                        
-                        'latim': {
-                            'ações': { suffix: '-tio', type: 'nominalization', meaning: 'ato ou resultado' },
-                            'verbos': { suffix: 're/m/mere', type: 'intensifier', meaning: 'fazer de novo/repisar' }
-                        }
-                    };
-                }
-                
-                analyze(word) {
-                    const lowerWord = word.toLowerCase();
-                    
-                    // Analyze morphological structure
-                    let structure = '';
-                    let root = '';
-                    let affixes = [];
-                    
-                    // Check for compound words
-                    if (lowerWord.includes(lowerWord.substring(0, 3))) {
-                        structure = `composição: ${lowerWord.substring(0, 3)} + ${lowerWord.substring(3)}`;
-                        root = lowerWord.substring(0, 3);
-                        affixes.push(lowerWord.substring(3));
-                    } 
-                    else if (lowerWord.endsWith('ação') || lowerWord.endsWith('ção')) {
-                        structure = `derivação: raiz + '-ção'`;
-                        root = lowerWord.replace(/(ção|aão)$/, '');
-                        affixes.push('-ção');
-                    }
-                    else if (lowerWord.endsWith('ar') && !lowerWord.endsWith('ção')) {
-                        structure = `desinência verbal: raiz + 'ar'`;
-                        root = lowerWord.replace(/ar$/, '');
-                        affixes.push('ar');
-                    }
-                    else {
-                        structure = `possível raiz ou forma simples`;
-                        root = lowerWord;
-                    }
-                    
-                    // Determine if it's a known root
-                    root = this.identifyRoot(root);
-                    
-                    return {
-                        structure: structure,
-                        root: root,
-                        affixes: affixes,
-                        word: lowerWord,
-                        isCompound: lowerWord.includes(lowerWord.substring(0, 3))
-                    };
-                }
-                
-                identifyRoot(word) {
-                    // Check against known roots
-                    const knownRoots = ['agua', 'amigo', 'cadeira', 'coração', 'estrela', 'rio', 'floresta'];
-                    
-                    for (const root of knownRoots) {
-                        if (word.includes(root) && root.length > 2) {
-                            return root;
-                        }
-                    }
-                    
-                    // If word is short enough, assume it's a root
-                    if (word.length < 6) {
-                        return word;
-                    }
-                    
-                    return null;
-                }
-                
-                getRoot(word, morphologicalStructure) {
-                    if (!morphologicalStructure) return null;
-                    
-                    const structure = morphologicalStructure;
-                    let root = null;
-                    
-                    if (structure.root) {
-                        root = structure.root;
-                    } else if (structure.structure.includes('composição')) {
-                        root = structure.structure.split('+')[0].trim();
-                    }
-                    
-                    return root;
-                }
-                
-                analyzeDerivation(word) {
-                    const lowerWord = word.toLowerCase();
-                    const patterns = this.scanner.morphologicalPatterns;
-                    
-                    for (const language in patterns) {
-                        for (const category in patterns[language]) {
-                            const pattern = patterns[language][category];
-                            
-                            if (lowerWord.endsWith(pattern.suffix)) {
-                                return {
-                                    type: category,
-                                    pattern: pattern,
-                                    language: language,
-                                    stem: lowerWord.replace(pattern.suffix, '')
-                                };
-                            }
-                        }
-                    }
-                    
-                    return null;
-                }
-                
-                analyzeCompounding(word) {
-                    const lowerWord = word.toLowerCase();
-                    const parts = [];
-                    
-                    // Simple compound analysis
-                    for (let i = 3; i < lowerWord.length; i++) {
-                        const part = lowerWord.substring(0, i);
-                        const remainder = lowerWord.substring(i);
-                        
-                        if (this.isWordPart(part) && this.isWordPart(remainder)) {
-                            parts.push({prefix: part, suffix: remainder});
-                        }
-                    }
-                    
-                    return parts;
-                }
-                
-                isWordPart(part) {
-                    return part.length >= 3 && part.length <= 5 && 
-                           /^[a-záéíóúãõâêîôû]+$/i.test(part);
-                }
-            }
-            
-            // Sememe Engine
-            class SememeEngine {
-                constructor(semasScanner) {
-                    this.scanner = semasScanner;
-                }
-                
-                analyze(wordData) {
-                    const word = wordData.text.toLowerCase();
-                    const grammaticalClass = wordData.grammaticalClass;
-                    const morphological = wordData.morphologicalStructure;
-                    
-                    const analysis = {
-                        semas: [],
-                        sememes: [],
-                        field: [],
-                        uncertainty: []
-                    };
-                    
-                    // Analyze based on word characteristics
-                    analysis.semas = this.extractSemas(word, grammaticalClass, morphological);
-                    analysis.sememes = this.reconstructSememe(analysis.semas, word);
-                    analysis.field = this.determineField(analysis.semas, word);
-                    analysis.uncertainty = this.identifyUncertainty(word, analysis.semas);
-                    
-                    return analysis;
-                }
-                
-                extractSemas(word, grammaticalClass, morphological) {
-                    const semas = [];
-                    const lowerWord = word.toLowerCase();
-                    
-                    // Semantic features database
-                    const features = this.scanner.semanticFeatures;
-                    
-                    // Determine based on word structure
-                    if (lowerWord.includes('agua') || lowerWord === 'água') {
-                        semas.push('+transparente', '+líquido', '+fluido', '+cúbico');
-                    } else if (lowerWord === 'cadeira') {
-                        semas.push('+assento', '+suporte_corporal', '+individualidade');
-                    } else if (lowerWord === 'amigo') {
-                        semas.push('+relação', '+conhecido', '+confiança');
-                    } else if (lowerWord === 'estrela') {
-                        semas.push('+luz', '+brilhante', '+célula');
-                    } else if (lowerWord === 'rio') {
-                        semas.push('+fluxo', '+água', '+curso');
-                    } else if (lowerWord === 'floresta') {
-                        semas.push('+árvores', '+vida', '+verde');
-                    } else if (lowerWord === 'silêncio') {
-                        semas.push('+ausência', '+som', '+calmo');
-                    } else {
-                        // Generic feature extraction
-                        semas.push(...this.genericSemanticFeatures(word));
-                    }
-                    
-                    return semas;
-                }
-                
-                reconstructSememe(semas, word) {
-                    const sememes = [];
-                    
-                    // Combine semas into semantic units
-                    if (semas.includes('+assento') && semas.includes('+suporte_corporal')) {
-                        sememes.push('mobiliário de assentamento individual');
-                    }
-                    
-                    if (semas.includes('+fluxo') && semas.includes('+água')) {
-                        sememes.push('corrente d’água com movimento contínuo');
-                    }
-                    
-                    if (semas.includes('+luz') && semas.includes('+brilhante')) {
-                        sememes.push('objeto celeste com emissão luminosa');
-                    }
-                    
-                    if (semas.length === 0) {
-                        sememes.push('unidades semânticas básicas ainda em análise');
-                    }
-                    
-                    return sememes;
-                }
-                
-                determineField(semas, word) {
-                    const field = [];
-                    
-                    if (semas.some(s => s.includes('assento') || s.includes('suporte'))) {
-                        field.push('mobiliário');
-                    }
-                    
-                    if (semas.some(s => s.includes('água') || s.includes('fluxo'))) {
-                        field.push('hidroambiente');
-                    }
-                    
-                    if (semas.some(s => s.includes('luz') || s.includes('brilhante'))) {
-                        field.push('astronomia');
-                    }
-                    
-                    if (semas.some(s => s.includes('relação') || s.includes('conhecido'))) {
-                        field.push('relações_sociais');
-                    }
-                    
-                    if (semas.some(s => s.includes('som') || s.includes('ausência'))) {
-                        field.push('percepção_auditiva');
-                    }
-                    
-                    if (field.length === 0) {
-                        field.push('ontologia_geral');
-                    }
-                    
-                    return field;
-                }
-                
-                identifyUncertainty(word, semas) {
-                    const uncertainty = [];
-                    
-                    // Check for words requiring external verification
-                    if (word === 'estrela') {
-                        uncertainty.push({
-                            type: 'etimologia_proposta',
-                            description: 'Origem em *ster- (IE) requer verificação em dicionários especializados'
-                        });
-                    }
-                    
-                    if (word === 'coração') {
-                        uncertainty.push({
-                            type: 'radicais_múltiplos',
-                            description: 'Várias raízes propostas: *ḱerdʰ-, *ḱerd-h₂-, requer filólogo especialista'
-                        });
-                    }
-                    
-                    return uncertainty;
-                }
-                
-                genericSemanticFeatures(word) {
-                    const features = [];
-                    const lowerWord = word.toLowerCase();
-                    
-                    // Generic feature extraction based on word patterns
-                    if (lowerWord.length < 5) {
-                        features.push('+curto');
-                    }
-                    
-                    if (lowerWord.match(/[aeiouáéíóúâêîôûãõ]/)) {
-                        features.push('+possui_vogal');
-                    }
-                    
-                    if (lowerWord.match(/[bcdfgjklmnpqrstvwxyzçÇ]/)) {
-                        features.push('+possui_consoante');
-                    }
-                    
-                    // Basic semantic categories
-                    if (lowerWord.includes('sombra')) features.push('+escuridão', '+protegido');
-                    if (lowerWord.includes('silêncio')) features.push('+ausência', '+calmo');
-                    if (lowerWord.includes('velocidade')) features.push('+rapidez', '+movimento');
-                    if (lowerWord.includes('sentimento')) features.push('+emoção', '+percepção');
-                    if (lowerWord.includes('memória')) features.push('+recordação', '+tempo');
-                    if (lowerWord.includes('sonho')) features.push('+fantasia', '+noturno');
-                    if (lowerWord.includes('realidade')) features.push('+fático', '+concreto');
-                    
-                    return features;
-                }
-            }
-            
-            // Etymology Engine
-            class EtymologyEngine {
-                constructor(semasScanner) {
-                    this.scanner = semasScanner;
-                    this.languages = ['latim', 'grego', 'português', 'espanhol', 'italiano', 'francês', 'alemão', 'inglês'];
-                }
-                
-                async analyze(wordData) {
-                    const word = wordData.text.toLowerCase();
-                    let etymology = null;
-                    
-                    // Check against known etymology database
-                    for (const language of this.languages) {
-                        if (this.scanner.etymologyDatabase[language] && 
-                            this.scanner.etymologyDatabase[language][word]) {
-                            
-                            const dbEntry = this.scanner.etymologyDatabase[language][word];
-                            etymology = {
-                                from: language,
-                                to: this.getPortugueseEquivalent(word, language),
-                                meaning: dbEntry.meaning,
-                                form: dbEntry.form,
-                                certainty: dbEntry.certainty,
-                                cognates: dbEntry.cognates || [],
-                                sources: ['etymologia database', 'lingua enciclopédia'],
-                                reconstructed: dbEntry.form.includes('*') || false
-                            };
-                            break;
-                        }
-                    }
-                    
-                    // If not found, try to determine from patterns
-                    if (!etymology) {
-                        etymology = this.analyzePattern(word);
-                    }
-                    
-                    wordData.etymology = etymology;
-                    return etymology;
-                }
-                
-                getPortugueseEquivalent(word, language) {
-                    const equivalents = {
-                        'latim': {
-                            'aqua': 'água',
-                            'amicus': 'amigo',
-                            'stella': 'estrela',
-                            'radix': 'raiz'
-                        },
-                        'grego': {
-                            'ὕδωρ': 'água',
-                            'ἀστήρ': 'estrela',
-                            'φιλία': 'amizade'
-                        },
-                        'português': {
-                            'água': 'água',
-                            'amigo': 'amigo',
-                            'estrela': 'estrela'
-                        }
-                    };
-                    
-                    if (equivalents[language] && equivalents[language][word]) {
-                        return equivalents[language][word];
-                    }
-                    
-                    // Default mapping
-                    return `português:${word}`;
-                }
-                
-                analyzePattern(word) {
-                    const patterns = {
-                        'ação': { from: 'latim', to: 'português', certainty: 0.7 },
-                        'ar': { from: 'latim', to: 'português', certainty: 0.8 },
-                        'mente': { from: 'latim', to: 'português', certainty: 0.9 },
-                        'ico': { from: 'grego', to: 'português', certainty: 0.6 }
-                    };
-                    
-                    for (const pattern in patterns) {
-                        if (word.endsWith(pattern)) {
-                            return {
-                                from: patterns[pattern].from,
-                                to: `português:${word}`,
-                                meaning: 'padrão etimológico',
-                                form: `*${word}`,
-                                certainty: patterns[pattern].certainty,
-                                cognates: [],
-                                sources: ['etymology patterns'],
-                                reconstructed: true,
-                                uncertainty: 'reconstrução baseada em semelhanças morfológicas'
-                            };
-                        }
-                    }
-                    
-                    // Default uncertain etymology
-                    return {
-                        from: 'desconhecido',
-                        to: `português:${word}`,
-                        meaning: 'etimologia requer consulta especializada',
-                        form: word,
-                        certainty: 0.3,
-                        cognates: [],
-                        sources: ['análise automática'],
-                        reconstructed: false,
-                        uncertainty: 'sem registro etimológico documentado'
-                    };
-                }
-                
-                verifyEtymology(etymology, word) {
-                    // Verify etymology against sources
-                    return {
-                        verified: true,
-                        confidence: etymology.certainty * 0.8,
-                        sources: etymology.sources,
-                        notes: 'Verificação automática concluída'
-                    };
-                }
-            }
-            
-            // Taxonomy Engine
-            class TaxonomyEngine {
-                constructor(semasScanner) {
-                    this.scanner = semasScanner;
-                }
-                
-                analyze(wordData) {
-                    const analysis = {
-                        family: null,
-                        context: [],
-                        confidence: 0
-                    };
-                    
-                    // Determine family based on semantic field
-                    if (wordData.semanticField.includes('mobiliário')) {
-                        analysis.family = {
-                            name: 'família_objetos',
-                            members: ['cadeira', 'mesa', 'estante'],
-                            commonTrait: 'objetos de uso doméstico',
-                            origin: 'latim'
-                        };
-                    } else if (wordData.semanticField.includes('hidroambiente')) {
-                        analysis.family = {
-                            name: 'família_hídrica',
-                            members: ['água', 'rio', 'oceano', 'mar'],
-                            commonTrait: 'elementos com presença aquática',
-                            origin: 'proto-indo-europeu'
-                        };
-                    } else if (wordData.semanticField.includes('astronomia')) {
-                        analysis.family = {
-                            name: 'família_luminosa',
-                            members: ['estrela', 'luz', 'sol'],
-                            commonTrait: 'corpos com propriedade luminosa',
-                            origin: 'latim'
-                        };
-                    }
-                    
-                    // Determine contextual relationships
-                    analysis.context = this.determineContext(wordData);
-                    
-                    return analysis;
-                }
-                
-                determineContext(wordData) {
-                    const contexts = [];
-                    
-                    if (wordData.text === 'amigo') {
-                        contexts.push('relações_sociais', 'interação_humana');
-                    } else if (wordData.text === 'rio') {
-                        contexts.push('geografia', 'ambiente_natural');
-                    } else if (wordData.text === 'silêncio') {
-                        contexts.push('percepção_auditiva', 'tranquilidade');
-                    }
-                    
-                    return contexts;
-                }
-            }
-            
-            // Semantic Relations Engine
-            class SemanticRelationsEngine {
-                constructor(semasScanner) {
-                    this.scanner = semasScanner;
-                }
-                
-                analyze(wordData) {
-                    const relations = [];
-                    
-                    // Analyze relations based on semantic features
-                    relations.push(...this.analyzeSynonyms(wordData));
-                    relations.push(...this.analyzeAntonyms(wordData));
-                    relations.push(...this.analyzeHyponyms(wordData));
-                    relations.push(...this.analyzeHypernyms(wordData));
-                    
-                    return relations;
-                }
-                
-                analyzeSynonyms(wordData) {
-                    const synonyms = [];
-                    const lowerWord = wordData.text.toLowerCase();
-                    
-                    if (this.scanner.semanticRelationDatabase.sinonímia[lowerWord]) {
-                        const dbSynonyms = this.scanner.semanticRelationDatabase.sinonímia[lowerWord];
-                        
-                        dbSynonyms.forEach((synonym, index) => {
-                            synonyms.push({
-                                target: synonym,
-                                type: 'sinonímia',
-                                strength: 0.7 - (index * 0.1),
-                                confidence: 85 - (index * 5)
-                            });
-                        });
-                    }
-                    
-                    return synonyms;
-                }
-                
-                analyzeAntonyms(wordData) {
-                    const antonyms = [];
-                    const lowerWord = wordData.text.toLowerCase();
-                    
-                    // Basic antonym pairs
-                    const antonymPairs = {
-                        'água': ['terra', 'seca', 'deserto'],
-                        'cadeira': ['piso', 'chão', 'desprovido'],
-                        'silêncio': ['ruído', 'som', 'barulho']
-                    };
-                    
-                    if (antonymPairs[lowerWord]) {
-                        antonymPairs[lowerWord].forEach(antonym => {
-                            antonyms.push({
-                                target: antonym,
-                                type: 'antonímia',
-                                strength: 0.8,
-                                confidence: 90
-                            });
-                        });
-                    }
-                    
-                    return antonyms;
-                }
-                
-                analyzeHyponyms(wordData) {
-                    const hyponyms = [];
-                    const lowerWord = wordData.text.toLowerCase();
-                    
-                    if (this.scanner.semanticRelationDatabase.hiperonímia[lowerWord]) {
-                        const hypernyms = this.scanner.semanticRelationDatabase.hiperonímia[lowerWord];
-                        
-                        hypernyms.forEach(hypernym => {
-                            hyponyms.push({
-                                target: hypernym,
-                                type: 'hiperonímia',
-                                strength: 0.6,
-                                confidence: 75
-                            });
-                        });
-                    }
-                    
-                    return hyponyms;
-                }
-                
-                analyzeHypernyms(wordData) {
-                    const hypernyms = [];
-                    const lowerWord = wordData.text.toLowerCase();
-                    
-                    if (this.scanner.semanticRelationDatabase.hiperonímia) {
-                        for (const hypernym in this.scanner.semanticRelationDatabase.hiperonímia) {
-                            const targets = this.scanner.semanticRelationDatabase.hiperonímia[hypernym];
-                            
-                            if (targets.includes(lowerWord)) {
-                                hypernyms.push({
-                                    target: hypernym,
-                                    type: 'hiperonímia',
-                                    strength: 0.7,
-                                    confidence: 80
-                                });
-                            }
-                        }
-                    }
-                    
-                    return hypernyms;
-                }
-                
-                createConnections(wordData) {
-                    // Create connections for visualization
-                    return wordData.relations.map(relation => {
-                        return {
-                            source: wordData.text,
-                            target: relation.target,
-                            type: relation.type,
-                            strength: relation.strength,
-                            confidence: relation.confidence
-                        };
-                    });
-                }
-            }
-            
-            // Visual Renderer
-            class VisualRenderer {
-                constructor(semasScanner) {
-                    this.scanner = semasScanner;
-                    this.canvas = null;
-                    this.ctx = null;
-                    this.animationId = null;
-                    this.particles = [];
-                    this.wordPositions = new Map();
-                }
-                
-                renderWord(wordData) {
-                    const element = document.querySelector(`.word-unit[data-word="${wordData.text}"]`);
-                    if (element) {
-                        this.animateWordState(element, wordData);
-                    }
-                }
-                
-                animateWordState(element, wordData) {
-                    // Remove old state classes
-                    element.className = element.className.replace(/state-\w+/g, '');
-                    
-                    // Add new state class
-                    element.classList.add(`state-${wordData.state}`);
-                    
-                    // Update element content with confidence indicator
-                    const confidence = Math.round(wordData.confidence * 100);
-                    const indicator = element.querySelector('.word-confidence');
-                    if (indicator) {
-                        indicator.textContent = `${confidence}%`;
-                    }
-                }
-                
-                renderField() {
-                    const canvas = document.getElementById('fieldCanvas');
-                    if (!canvas) return;
-                    
-                    this.canvas = canvas;
-                    this.ctx = canvas.getContext('2d');
-                    
-                    // Set canvas size
-                    canvas.width = canvas.offsetWidth;
-                    canvas.height = canvas.offsetHeight;
-                    
-                    // Clear canvas
-                    this.ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
-                    // Render connections
-                    this.renderConnections();
-                    
-                    // Render nodes (words with strong semantic field)
-                    this.renderNodes();
-                }
-                
-                renderConnections() {
-                    const words = Array.from(this.scanner.words.values());
-                    
-                    words.forEach(wordData => {
-                        wordData.relations.forEach(relation => {
-                            const sourceWord = document.querySelector(`.word-unit[data-word="${wordData.text}"]`);
-                            const targetWord = document.querySelector(`.word-unit[data-word="${relation.target}"]`);
-                            
-                            if (sourceWord && targetWord) {
-                                const sourceRect = sourceWord.getBoundingClientRect();
-                                const targetRect = targetWord.getBoundingClientRect();
-                                const captureFlow = document.getElementById('captureFlow');
-                                const flowRect = captureFlow.getBoundingClientRect();
-                                
-                                const sourceX = sourceRect.left - flowRect.left + sourceRect.width / 2;
-                                const sourceY = sourceRect.top - flowRect.top + sourceRect.height / 2;
-                                const targetX = targetRect.left - flowRect.left + targetRect.width / 2;
-                                const targetY = targetRect.top - flowRect.top + targetRect.height / 2;
-                                
-                                // Draw connection
-                                this.ctx.beginPath();
-                                this.ctx.moveTo(sourceX, sourceY);
-                                this.ctx.lineTo(targetX, targetY);
-                                
-                                // Set line style based on relation type and confidence
-                                if (relation.type === 'sinonímia') {
-                                    this.ctx.strokeStyle = '#00ff41';
-                                    this.ctx.lineWidth = 2;
-                                } else if (relation.type === 'hiperonímia') {
-                                    this.ctx.strokeStyle = '#00ffff';
-                                    this.ctx.lineWidth = 1;
-                                } else if (relation.type === 'meronímia') {
-                                    this.ctx.strokeStyle = '#ffb000';
-                                    this.ctx.lineWidth = 1;
-                                } else {
-                                    this.ctx.strokeStyle = '#666666';
-                                    this.ctx.lineWidth = 1;
-                                    this.ctx.strokeStyle = this.ctx.createLinearGradient(sourceX, sourceY, targetX, targetY);
-                                    this.ctx.addColorStop(0, 'rgba(102, 102, 102, 0.3)');
-                                    this.ctx.addColorStop(1, 'rgba(102, 102, 102, 0.1)');
-                                }
-                                
-                                this.ctx.stroke();
-                            }
-                        });
-                    });
-                }
-                
-                renderNodes() {
-                    const words = Array.from(this.scanner.words.values());
-                    
-                    words.forEach(wordData => {
-                        if (wordData.semanticField.length > 0) {
-                            const primaryField = wordData.semanticField[0];
-                            
-                            // Map field to color
-                            const fieldColors = {
-                                'mobiliário': '#00ff41',
-                                'hidroambiente': '#00ffff',
-                                'astronomia': '#ffb000',
-                                'relações_sociais': '#ff4444',
-                                'percepção_auditiva': '#ff00ff'
-                            };
-                            
-                            const color = fieldColors[primaryField] || '#ffffff';
-                            
-                            // Draw node (concept in field view)
-                            const index = Math.floor(Math.random() * canvas.width);
-                            const radius = Math.max(10, wordData.semas.length * 3);
-                            
-                            this.ctx.beginPath();
-                            this.ctx.arc(index, 100 + Math.random() * 200, radius, 0, Math.PI * 2);
-                            this.ctx.fillStyle = color;
-                            this.ctx.fill();
-                            this.ctx.strokeStyle = '#ffffff';
-                            this.ctx.lineWidth = 2;
-                            this.ctx.stroke();
-                            
-                            // Add label
-                            this.ctx.fillStyle = '#000000';
-                            this.ctx.font = '12px monospace';
-                            this.ctx.fillText(wordData.text, index - 20, 105 + Math.random() * 200);
-                        }
-                    });
-                }
-                
-                handleResize() {
-                    if (this.canvas) {
-                        this.renderField();
-                    }
-                }
-                
-                animate() {
-                    // Animate particles and connections
-                    this.updateParticles();
-                    this.renderConnections();
-                    
-                    requestAnimationFrame(() => this.animate());
-                }
-                
-                updateParticles() {
-                    // Update particle positions for connections
-                    this.particles.forEach(particle => {
-                        particle.x += particle.vx;
-                        particle.y += particle.vy;
-                        
-                        if (particle.x < 0 || particle.x > this.canvas.width) {
-                            particle.vx = -particle.vx;
-                        }
-                        
-                        if (particle.y < 0 || particle.y > this.canvas.height) {
-                            particle.vy = -particle.vy;
-                        }
-                    });
-                }
-            }
-            
-            // Memory Manager
-            class MemoryManager {
-                constructor(semasScanner) {
-                    this.scanner = semasScanner;
-                    this.storageKey = 'semas-scanner-data';
-                }
-                
-                save() {
-                    const data = {
-                        words: Array.from(this.scanner.words.values()),
-                        relations: this.scanner.relations,
-                        statistics: this.scanner.stats,
-                        timestamp: new Date().toISOString()
-                    };
-                    
-                    localStorage.setItem(this.storageKey, JSON.stringify(data));
-                }
-                
-                load() {
-                    const data = localStorage.getItem(this.storageKey);
-                    if (data) {
-                        try {
-                            return JSON.parse(data);
-                        } catch (e) {
-                            console.error('Error loading memory:', e);
-                        }
-                    }
-                    return null;
-                }
-                
-                clear() {
-                    localStorage.removeItem(this.storageKey);
-                    this.scanner.words.clear();
-                    this.scanner.relations = [];
-                    this.scanner.wordCount = 0;
-                    this.scanner.lexicalUnitsCount = 0;
-                    this.scanner.semasCount = 0;
-                    this.scanner.sememesCount = 0;
-                    this.scanner.rootsCount = 0;
-                    this.scanner.relationsCount = 0;
-                    this.scanner.etymologyCount = 0;
-                    this.scanner.pendingCount = 0;
-                    
-                    // Reset stats
-                    this.scanner.stats = {
-                        totalWords: 0,
-                        lexicalUnits: new Set(),
-                        semasIdentified: new Set(),
-                        sememesReconstructed: new Set(),
-                        rootsIdentified: new Set(),
-                        relationsEstablished: 0,
-                        etymologyInvestigated: 0,
-                        classificationsPending: 0,
-                        lowConfidenceResults: 0,
-                        byDay: {}
-                    };
-                }
-                
-                export() {
-                    const data = {
-                        words: Array.from(this.scanner.words.values()),
-                        relations: this.scanner.relations,
-                        statistics: this.scanner.stats,
-                        version: '1.0'
-                    };
-                    
-                    return JSON.stringify(data, null, 2);
-                }
-            }
-            
-            // Initialize and start
-            window.addEventListener('load', () => {
-                const scanner = new SEMASScanner();
-                
-                // Store globally for debugging
-                window.semasScanner = scanner;
-                
-                // Start animation loop
-                if (scanner.visualRenderer) {
-                    scanner.visualRenderer.animate();
-                }
-                
-                // Auto-save periodically
-                setInterval(() => {
-                    if (scanner.initialized && scanner.words.size > 0) {
-                        scanner.saveData();
-                    }
-                }, 30000);
-            });
-            
-            // Error handling
-            window.addEventListener('error', (e) => {
-                console.error('SEMAS Scanner error:', e.error);
-                
-                if (window.semasScanner) {
-                    window.semasScanner.notify('Erro no sistema, reinicie a página', 'error');
-                }
-            });
-        </script>
-    </body>
+            // Mostra o conteúdo
+            content.classList.add('active');
+        }
+    </script>
+</body>
 </html>
